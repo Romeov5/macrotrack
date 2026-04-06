@@ -1,0 +1,1255 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MacroTrack — Calorie & Macro Tracker</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0d0f1a;
+      --surface:  #141624;
+      --surface2: #1c1f33;
+      --surface3: #252840;
+      --border:   #2a2e4e;
+      --border2:  #363b60;
+      --text:     #e2e4f3;
+      --text-2:   #8b8fa8;
+      --text-3:   #4a4f6e;
+      --calories: #f59e0b;
+      --protein:  #3b82f6;
+      --carbs:    #10b981;
+      --fat:      #a855f7;
+      --danger:   #ef4444;
+      --accent:   #6366f1;
+      --r: 12px; --r-sm: 8px; --r-lg: 16px;
+    }
+
+    html { font-size: 15px; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5;
+    }
+
+    .app { max-width: 880px; margin: 0 auto; }
+    .main { padding: 0 16px 80px; }
+
+    /* ── Header ── */
+    .header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 14px 16px 12px; position: sticky; top: 0; z-index: 100;
+    }
+    .header-top {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; }
+    .brand-icon { font-size: 1.3rem; }
+    .brand-name { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
+    .btn-goals {
+      display: flex; align-items: center; gap: 6px; padding: 7px 14px;
+      background: var(--surface3); border: 1px solid var(--border2);
+      border-radius: var(--r-sm); color: var(--text-2); font-size: 0.85rem;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .btn-goals:hover { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+    .header-nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .view-toggle {
+      display: flex; background: var(--surface3); border-radius: var(--r-sm);
+      padding: 3px; border: 1px solid var(--border);
+    }
+    .view-btn {
+      padding: 5px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; background: transparent; border: none; color: var(--text-2);
+      transition: all 0.15s; font-family: inherit;
+    }
+    .view-btn.active { background: var(--accent); color: #fff; }
+    .date-nav { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center; }
+    .nav-arrow {
+      width: 30px; height: 30px; background: var(--surface3); border: 1px solid var(--border);
+      border-radius: var(--r-sm); color: var(--text-2); font-size: 1.3rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+      line-height: 1; font-family: inherit;
+    }
+    .nav-arrow:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .date-label { font-size: 0.9rem; font-weight: 600; min-width: 200px; text-align: center; }
+    .today-btn {
+      padding: 5px 14px; background: transparent; border: 1px solid var(--accent);
+      border-radius: var(--r-sm); color: var(--accent); font-size: 0.82rem; font-weight: 500;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .today-btn:hover { background: var(--accent); color: #fff; }
+
+    /* ── Day View ── */
+    .day-view { display: flex; flex-direction: column; gap: 16px; padding-top: 16px; }
+    .summary-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 20px; display: flex;
+      gap: 24px; align-items: flex-start; flex-wrap: wrap;
+    }
+    .summary-cal { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+    .summary-cal-ring {
+      width: 90px; height: 90px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center; transition: background 0.4s;
+    }
+    .summary-cal-inner {
+      width: 72px; height: 72px; background: var(--surface); border-radius: 50%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .summary-cal-num { font-size: 1.15rem; font-weight: 700; line-height: 1; }
+    .summary-cal-sub { font-size: 0.7rem; color: var(--text-2); margin-top: 2px; }
+    .summary-cal-info { display: flex; flex-direction: column; gap: 3px; }
+    .summary-cal-label { font-size: 0.75rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; }
+    .summary-remaining { font-size: 0.9rem; font-weight: 600; }
+    .summary-goal-text { font-size: 0.78rem; color: var(--text-3); }
+    .macro-bars { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 200px; }
+    .macro-bar-wrap { display: flex; flex-direction: column; gap: 5px; }
+    .macro-bar-header { display: flex; justify-content: space-between; align-items: center; }
+    .macro-bar-label { font-size: 0.78rem; font-weight: 600; }
+    .macro-bar-value { font-size: 0.82rem; }
+    .macro-bar-goal { color: var(--text-3); font-size: 0.78rem; }
+    .progress-track { height: 6px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 99px; transition: width 0.35s ease; }
+
+    /* ── Meals Grid ── */
+    .meals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 560px) { .meals-grid { grid-template-columns: 1fr; } }
+
+    /* ── Meal Card ── */
+    .meal-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); overflow: hidden; transition: border-color 0.15s;
+    }
+    .meal-card:hover { border-color: var(--border2); }
+    .meal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 14px 10px; cursor: pointer; user-select: none;
+    }
+    .meal-title { display: flex; align-items: center; gap: 8px; }
+    .meal-emoji { font-size: 1.1rem; }
+    .meal-label { font-weight: 600; font-size: 0.92rem; }
+    .meal-count {
+      font-size: 0.72rem; color: var(--text-3); background: var(--surface3);
+      border-radius: 99px; padding: 1px 8px;
+    }
+    .meal-header-right { display: flex; align-items: center; gap: 8px; }
+    .meal-cal-badge { font-size: 0.8rem; font-weight: 600; color: var(--calories); }
+    .meal-chevron {
+      color: var(--text-3); font-size: 1.1rem; display: inline-block;
+      transition: transform 0.2s; transform: rotate(90deg);
+    }
+    .meal-chevron.open { transform: rotate(-90deg); }
+    .meal-macro-row { display: flex; gap: 6px; padding: 0 14px 10px; }
+    .macro-chip { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+    .macro-chip.protein { background: rgba(59,130,246,0.15); color: var(--protein); }
+    .macro-chip.carbs   { background: rgba(16,185,129,0.15); color: var(--carbs); }
+    .macro-chip.fat     { background: rgba(168,85,247,0.15); color: var(--fat); }
+    .food-list { padding: 0 10px; display: flex; flex-direction: column; gap: 1px; }
+    .food-item {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 8px 6px; border-radius: var(--r-sm); transition: background 0.1s;
+    }
+    .food-item:hover { background: var(--surface2); }
+    .food-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .food-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .food-macros { display: flex; gap: 8px; flex-wrap: wrap; }
+    .food-macro { font-size: 0.72rem; color: var(--text-3); }
+    .food-macro.cal  { color: var(--calories); font-weight: 600; }
+    .food-macro.prot { color: var(--protein); }
+    .food-macro.carb { color: var(--carbs); }
+    .food-macro.fat  { color: var(--fat); }
+    .remove-btn {
+      width: 24px; height: 24px; background: transparent; border: 1px solid transparent;
+      border-radius: 6px; color: var(--text-3); font-size: 1.1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+      transition: all 0.15s; line-height: 1; font-family: inherit;
+    }
+    .remove-btn:hover { background: rgba(239,68,68,0.15); border-color: var(--danger); color: var(--danger); }
+    .add-food-btn {
+      width: 100%; padding: 10px; background: transparent; border: none;
+      border-top: 1px solid var(--border); color: var(--accent); font-size: 0.85rem;
+      font-weight: 500; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; gap: 6px; transition: background 0.15s;
+      margin-top: 6px; font-family: inherit;
+    }
+    .add-food-btn:hover { background: rgba(99,102,241,0.08); }
+    .add-food-plus { font-size: 1.1rem; line-height: 1; }
+
+    /* ── Week View ── */
+    .week-view { display: flex; flex-direction: column; gap: 16px; padding-top: 16px; }
+    .week-summary-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-lg); padding: 20px;
+    }
+    .week-summary-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .week-summary-title { font-size: 1rem; font-weight: 700; }
+    .week-summary-sub { font-size: 0.78rem; color: var(--text-2); margin-top: 2px; }
+    .week-cal-badge { text-align: right; display: flex; flex-direction: column; gap: 2px; }
+    .week-cal-num { font-size: 1.4rem; font-weight: 800; }
+    .week-cal-label { font-size: 0.78rem; color: var(--text-2); }
+    .week-cal-remaining { font-size: 0.82rem; font-weight: 600; }
+    .week-macro-stack { display: flex; flex-direction: column; gap: 10px; }
+    .week-macro-row { display: flex; align-items: center; gap: 12px; }
+    .week-macro-label { font-size: 0.78rem; font-weight: 600; width: 60px; flex-shrink: 0; }
+    .week-macro-bar-track { flex: 1; height: 7px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
+    .week-macro-bar-fill { height: 100%; border-radius: 99px; transition: width 0.35s; }
+    .week-macro-values { font-size: 0.8rem; min-width: 130px; text-align: right; }
+    .week-macro-goal { color: var(--text-3); font-size: 0.75rem; }
+    .week-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+    .week-day-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 10px 6px; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .week-day-card:hover { border-color: var(--border2); background: var(--surface2); }
+    .week-day-card.selected { border-color: var(--accent); background: rgba(99,102,241,0.08); }
+    .week-day-abbr { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; }
+    .week-day-card.today .week-day-abbr { color: var(--accent); }
+    .week-day-date { font-size: 0.68rem; color: var(--text-3); }
+    .week-bar-track {
+      width: 28px; height: 60px; background: var(--surface3); border-radius: 6px;
+      overflow: hidden; display: flex; align-items: flex-end; margin: 4px 0;
+    }
+    .week-bar-fill { width: 100%; border-radius: 6px; transition: height 0.4s ease; min-height: 3px; }
+    .week-day-cals { font-size: 0.78rem; font-weight: 700; line-height: 1; }
+    .week-day-cals.over { color: var(--danger); }
+    .week-day-cals.empty { color: var(--text-3); }
+    .week-day-unit { font-size: 0.62rem; color: var(--text-3); }
+    .week-day-goal-line { text-align: center; color: var(--text-3); font-size: 0.78rem; padding-bottom: 8px; }
+
+    /* ── Weight Tracker ── */
+    .weight-tracker { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px; }
+    .weight-tracker-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+    .weight-tracker-title { font-size: 1rem; font-weight: 700; }
+    .weight-tracker-sub { font-size: 0.78rem; color: var(--text-2); margin-top: 2px; }
+    .weight-unit-toggle { display: flex; background: var(--surface3); border-radius: var(--r-sm); border: 1px solid var(--border); }
+    .weight-unit-btn { padding: 6px 14px; border: none; background: transparent; color: var(--text-2); font-size: 0.82rem; font-weight: 500; cursor: pointer; border-radius: calc(var(--r-sm) - 1px); transition: all 0.15s; font-family: inherit; }
+    .weight-unit-btn.active { background: var(--accent); color: #fff; }
+    .weight-entry-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; margin-bottom: 16px; }
+    .weight-entry-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.85rem; font-weight: 600; }
+    .weight-entry-date { font-size: 0.78rem; color: var(--text-2); font-weight: 400; }
+    .weight-entry-row { display: flex; gap: 8px; align-items: center; }
+    .weight-entry-input {
+      flex: 1; padding: 9px 12px; background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--r-sm); color: var(--text); font-size: 0.95rem; outline: none;
+      transition: border-color 0.15s; font-family: inherit;
+    }
+    .weight-entry-input:focus { border-color: var(--accent); }
+    .weight-entry-input::placeholder { color: var(--text-3); }
+    .weight-entry-save { padding: 9px 18px !important; white-space: nowrap; }
+    .weight-entry-hint { font-size: 0.78rem; color: var(--text-2); margin-top: 8px; }
+    .weight-chart-wrap { margin-bottom: 16px; }
+    .weight-chart-label { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .weight-chart-svg { width: 100%; height: auto; display: block; }
+    .chart-no-data { font-size: 0.78rem; color: var(--text-3); text-align: center; padding: 28px 0 12px; font-style: italic; }
+    .weight-stats { display: flex; gap: 0; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+    .weight-stat { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 80px; padding: 0 16px; border-right: 1px solid var(--border); }
+    .weight-stat:first-child { padding-left: 0; }
+    .weight-stat:last-child { border-right: none; }
+    .weight-stat-label { font-size: 0.68rem; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .weight-stat-val { font-size: 1rem; font-weight: 700; }
+
+    /* ── Modals ── */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; z-index: 200;
+      padding: 16px; animation: fade-in 0.15s ease;
+    }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .modal {
+      background: var(--surface); border: 1px solid var(--border2);
+      border-radius: var(--r-lg); width: 100%; max-width: 480px;
+      max-height: 90vh; overflow-y: auto; animation: slide-up 0.2s ease;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    }
+    @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+    }
+    .modal-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .modal-close {
+      width: 28px; height: 28px; background: var(--surface3); border: 1px solid var(--border);
+      border-radius: var(--r-sm); color: var(--text-2); font-size: 1.1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+      line-height: 1; font-family: inherit;
+    }
+    .modal-close:hover { color: var(--text); border-color: var(--border2); }
+    .quick-foods { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+    .quick-label { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .quick-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+    .quick-chip {
+      padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 99px; color: var(--text-2); font-size: 0.75rem; cursor: pointer;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .quick-chip:hover { background: var(--surface3); border-color: var(--accent); color: var(--text); }
+
+    /* ── My Foods ── */
+    .my-foods { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+    .my-foods-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .my-foods-search {
+      padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 99px; color: var(--text); font-size: 0.75rem; outline: none;
+      transition: border-color 0.15s; font-family: inherit; width: 120px;
+    }
+    .my-foods-search:focus { border-color: var(--accent); width: 160px; }
+    .my-foods-empty { font-size: 0.75rem; color: var(--text-3); font-style: italic; }
+    .my-food-chip {
+      display: flex; align-items: center;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 99px; overflow: hidden; transition: border-color 0.15s;
+    }
+    .my-food-chip:hover { border-color: var(--accent); }
+    .my-food-fill {
+      padding: 4px 10px 4px 12px; background: transparent; border: none;
+      color: var(--text-2); font-size: 0.75rem; cursor: pointer; font-family: inherit;
+      transition: color 0.15s;
+    }
+    .my-food-fill:hover { color: var(--text); }
+    .my-food-del {
+      padding: 4px 8px; background: transparent; border: none; border-left: 1px solid var(--border);
+      color: var(--text-3); font-size: 0.85rem; cursor: pointer; line-height: 1;
+      transition: all 0.15s; font-family: inherit;
+    }
+    .my-food-del:hover { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+    /* ── Serving unit toggle ── */
+    .unit-toggle { display: flex; background: var(--surface3); border-radius: var(--r-sm); border: 1px solid var(--border); width: 100%; }
+    .unit-btn { flex: 1; padding: 8px 4px; border: none; background: transparent; color: var(--text-2); font-size: 0.83rem; font-weight: 500; cursor: pointer; border-radius: calc(var(--r-sm) - 1px); transition: all 0.15s; font-family: inherit; }
+    .unit-btn.active { background: var(--accent); color: #fff; }
+    .unit-tag { font-size: 0.72rem; color: var(--accent); font-weight: 600; margin-left: 4px; }
+    .calc-preview {
+      grid-column: 1/-1; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--r-sm); padding: 9px 12px;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    }
+    .calc-preview-label { font-size: 0.72rem; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .calc-preview strong { font-size: 0.9rem; color: var(--calories); }
+    .calc-preview span { font-size: 0.82rem; font-weight: 600; }
+    .food-serving-tag { font-size: 0.72rem; color: var(--text-3); background: var(--surface3); border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+    .modal-form { padding: 16px 20px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-group { display: flex; flex-direction: column; gap: 5px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 0.78rem; font-weight: 500; color: var(--text-2); }
+    .form-group input {
+      padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--r-sm); color: var(--text); font-size: 0.9rem; outline: none;
+      transition: border-color 0.15s; font-family: inherit; width: 100%;
+    }
+    .form-group input:focus { border-color: var(--accent); }
+    .form-group.has-error input { border-color: var(--danger); }
+    .form-error { font-size: 0.72rem; color: var(--danger); }
+    .macro-breakdown {
+      background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm);
+      padding: 12px; display: flex; flex-direction: column; gap: 8px;
+    }
+    .macro-breakdown-title { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; }
+    .macro-breakdown-bar { height: 8px; border-radius: 99px; overflow: hidden; display: flex; }
+    .macro-breakdown-bar > div { height: 100%; transition: width 0.3s; }
+    .macro-breakdown-labels { display: flex; gap: 12px; align-items: center; font-size: 0.78rem; font-weight: 600; }
+    .macro-breakdown-total { margin-left: auto; color: var(--text-2); font-weight: 400; font-size: 0.75rem; }
+    .modal-footer {
+      grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px;
+      border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px;
+    }
+    .btn-primary {
+      padding: 9px 20px; background: var(--accent); border: none; border-radius: var(--r-sm);
+      color: #fff; font-size: 0.88rem; font-weight: 600; cursor: pointer;
+      transition: opacity 0.15s; font-family: inherit;
+    }
+    .btn-primary:hover { opacity: 0.85; }
+    .btn-secondary {
+      padding: 9px 20px; background: var(--surface3); border: 1px solid var(--border2);
+      border-radius: var(--r-sm); color: var(--text-2); font-size: 0.88rem; font-weight: 500;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .btn-secondary:hover { background: var(--surface2); color: var(--text); }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+    input[type=number]::-webkit-inner-spin-button,
+    input[type=number]::-webkit-outer-spin-button { opacity: 0.4; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ── Storage ────────────────────────────────────────
+    const STORAGE_KEY = 'cmt-data-v1';
+    const loadData = () => { try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; } };
+    const saveData = (d) => { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(d)); } catch {} };
+
+    // ── Date Utils ─────────────────────────────────────
+    const fmtDate = (d) => { const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dd}`; };
+    const parseDate = (s) => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
+    const addDays = (s,n) => { const d=parseDate(s); d.setDate(d.getDate()+n); return fmtDate(d); };
+    const isToday = (s) => s === fmtDate(new Date());
+    const getWeekDates = (s) => {
+      const d=parseDate(s), day=d.getDay(), diff=day===0?6:day-1;
+      const mon=new Date(d); mon.setDate(d.getDate()-diff);
+      return Array.from({length:7},(_,i)=>{ const x=new Date(mon); x.setDate(mon.getDate()+i); return fmtDate(x); });
+    };
+    const fmtLong = (s) => parseDate(s).toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    const fmtShort = (s) => parseDate(s).toLocaleDateString('en-US',{month:'short',day:'numeric'});
+    const dayAbbr = (s) => parseDate(s).toLocaleDateString('en-US',{weekday:'short'});
+    const weekRange = (dates) => `${fmtShort(dates[0])} – ${fmtShort(dates[6])}`;
+
+    // ── Constants ──────────────────────────────────────
+    const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 250, fat: 65 };
+    const MEALS = [
+      { key:'breakfast', label:'Breakfast', emoji:'🌅' },
+      { key:'lunch',     label:'Lunch',     emoji:'☀️' },
+      { key:'dinner',    label:'Dinner',    emoji:'🌙' },
+      { key:'snack',     label:'Snacks',    emoji:'🍎' },
+    ];
+    const QUICK_FOODS = [
+      { name:'Chicken Breast', calories:165, protein:31,  carbs:0,  fat:3.6,  servingUnit:'grams',    servingAmount:100 },
+      { name:'Brown Rice',     calories:216, protein:4.5, carbs:45, fat:1.8,  servingUnit:'grams',    servingAmount:100 },
+      { name:'Whole Egg',      calories:78,  protein:6,   carbs:0.6,fat:5,    servingUnit:'servings', servingAmount:1   },
+      { name:'Banana',         calories:105, protein:1.3, carbs:27, fat:0.4,  servingUnit:'servings', servingAmount:1   },
+      { name:'Greek Yogurt',   calories:59,  protein:10,  carbs:3.6,fat:0.4,  servingUnit:'grams',    servingAmount:100 },
+      { name:'Almonds',        calories:174, protein:6,   carbs:6,  fat:15,   servingUnit:'grams',    servingAmount:30  },
+      { name:'Oatmeal',        calories:389, protein:17,  carbs:66, fat:7,    servingUnit:'grams',    servingAmount:100 },
+      { name:'Salmon',         calories:208, protein:20,  carbs:0,  fat:13,   servingUnit:'grams',    servingAmount:100 },
+      { name:'White Rice',     calories:130, protein:2.7, carbs:28, fat:0.3,  servingUnit:'grams',    servingAmount:100 },
+      { name:'Broccoli',       calories:34,  protein:2.8, carbs:7,  fat:0.4,  servingUnit:'grams',    servingAmount:100 },
+      { name:'Sweet Potato',   calories:86,  protein:1.6, carbs:20, fat:0.1,  servingUnit:'grams',    servingAmount:100 },
+      { name:'Avocado',        calories:120, protein:1.5, carbs:6,  fat:11,   servingUnit:'servings', servingAmount:0.5 },
+    ];
+
+    const emptyDay = () => ({ breakfast:[], lunch:[], dinner:[], snack:[] });
+    const sumMacros = (items) => items.reduce((a,f)=>({
+      calories: a.calories + Number(f.calories||0),
+      protein:  a.protein  + Number(f.protein||0),
+      carbs:    a.carbs    + Number(f.carbs||0),
+      fat:      a.fat      + Number(f.fat||0),
+    }), {calories:0, protein:0, carbs:0, fat:0});
+
+    // ── MacroBar ───────────────────────────────────────
+    function MacroBar({ label, value, goal, color }) {
+      const pct = goal>0 ? Math.min((value/goal)*100,100) : 0;
+      const over = goal>0 && value>goal;
+      return (
+        <div className="macro-bar-wrap">
+          <div className="macro-bar-header">
+            <span className="macro-bar-label" style={{color}}>{label}</span>
+            <span className="macro-bar-value">
+              <strong style={{color: over ? 'var(--danger)' : 'var(--text)'}}>{Math.round(value)}</strong>
+              <span className="macro-bar-goal"> / {goal}{label==='Calories'?' kcal':'g'}</span>
+            </span>
+          </div>
+          <div className="progress-track">
+            <div className="progress-fill" style={{width:`${pct}%`, background: over?'var(--danger)':color}} />
+          </div>
+        </div>
+      );
+    }
+
+    // ── Summary Card ───────────────────────────────────
+    function SummaryCard({ totals, goals }) {
+      const calPct = goals.calories>0 ? Math.round((totals.calories/goals.calories)*100) : 0;
+      const remaining = goals.calories - totals.calories;
+      const over = remaining < 0;
+      const ringDeg = Math.min(calPct, 100) * 3.6;
+      return (
+        <div className="summary-card">
+          <div className="summary-cal">
+            <div className="summary-cal-ring" style={{background:`conic-gradient(${over?'var(--danger)':'var(--calories)'} ${ringDeg}deg, var(--surface3) 0deg)`}}>
+              <div className="summary-cal-inner">
+                <div className="summary-cal-num" style={{color: over?'var(--danger)':'var(--calories)'}}>{Math.round(totals.calories)}</div>
+                <div className="summary-cal-sub">kcal</div>
+              </div>
+            </div>
+            <div className="summary-cal-info">
+              <div className="summary-cal-label">Calories</div>
+              <div className="summary-remaining" style={{color: over?'var(--danger)':'var(--text-secondary)'}}>
+                {over ? `${Math.abs(Math.round(remaining))} over goal` : `${Math.round(remaining)} remaining`}
+              </div>
+              <div className="summary-goal-text">Goal: {goals.calories} kcal</div>
+            </div>
+          </div>
+          <div className="macro-bars">
+            <MacroBar label="Protein" value={totals.protein} goal={goals.protein} color="var(--protein)" />
+            <MacroBar label="Carbs"   value={totals.carbs}   goal={goals.carbs}   color="var(--carbs)" />
+            <MacroBar label="Fat"     value={totals.fat}     goal={goals.fat}     color="var(--fat)" />
+          </div>
+        </div>
+      );
+    }
+
+    // ── Meal Section ───────────────────────────────────
+    function MealSection({ meal, label, emoji, items, totals, onAdd, onRemove }) {
+      const [expanded, setExpanded] = useState(true);
+      const has = items.length > 0;
+      return (
+        <div className="meal-card">
+          <div className="meal-header" onClick={() => has && setExpanded(e=>!e)}>
+            <div className="meal-title">
+              <span className="meal-emoji">{emoji}</span>
+              <span className="meal-label">{label}</span>
+              {has && <span className="meal-count">{items.length} item{items.length!==1?'s':''}</span>}
+            </div>
+            <div className="meal-header-right">
+              {has && <span className="meal-cal-badge">{Math.round(totals.calories)} kcal</span>}
+              {has && <span className={`meal-chevron ${expanded?'open':''}`}>›</span>}
+            </div>
+          </div>
+          {expanded && <>
+            {has && (
+              <div className="meal-macro-row">
+                <span className="macro-chip protein">P: {Math.round(totals.protein)}g</span>
+                <span className="macro-chip carbs">C: {Math.round(totals.carbs)}g</span>
+                <span className="macro-chip fat">F: {Math.round(totals.fat)}g</span>
+              </div>
+            )}
+            <div className="food-list">
+              {items.map(item => (
+                <div key={item.id} className="food-item">
+                  <div className="food-item-info">
+                    <span className="food-name">
+                      {item.name}
+                      {item.quantity && (
+                        <span className="food-serving-tag">
+                          {item.quantity}{item.servingUnit==='grams'?'g':item.servingUnit==='oz'?'oz':' srv'}
+                        </span>
+                      )}
+                    </span>
+                    <div className="food-macros">
+                      <span className="food-macro cal">{Math.round(item.calories)} kcal</span>
+                      <span className="food-macro prot">P {Math.round(item.protein)}g</span>
+                      <span className="food-macro carb">C {Math.round(item.carbs)}g</span>
+                      <span className="food-macro fat">F {Math.round(item.fat)}g</span>
+                    </div>
+                  </div>
+                  <button className="remove-btn" onClick={() => onRemove(item.id)}>×</button>
+                </div>
+              ))}
+            </div>
+            <button className="add-food-btn" onClick={onAdd}>
+              <span className="add-food-plus">+</span> Add Food
+            </button>
+          </>}
+        </div>
+      );
+    }
+
+    // ── Day View ───────────────────────────────────────
+    function DayView({ entries, totals, goals, onAddFood, onRemoveFood }) {
+      return (
+        <div className="day-view">
+          <SummaryCard totals={totals} goals={goals} />
+          <div className="meals-grid">
+            {MEALS.map(({key,label,emoji}) => (
+              <MealSection
+                key={key} meal={key} label={label} emoji={emoji}
+                items={entries[key]} totals={sumMacros(entries[key])}
+                onAdd={() => onAddFood(key)}
+                onRemove={(id) => onRemoveFood(key, id)}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    // ── Week View ──────────────────────────────────────
+    function WeekMacroRow({ label, value, weekGoal, color }) {
+      const pct = weekGoal>0 ? Math.min((value/weekGoal)*100,100) : 0;
+      const over = weekGoal>0 && value>weekGoal;
+      return (
+        <div className="week-macro-row">
+          <span className="week-macro-label" style={{color}}>{label}</span>
+          <div className="week-macro-bar-track">
+            <div className="week-macro-bar-fill" style={{width:`${pct}%`, background: over?'var(--danger)':color}} />
+          </div>
+          <span className="week-macro-values">
+            <strong style={{color: over?'var(--danger)':'var(--text)'}}>{Math.round(value)}</strong>
+            <span className="week-macro-goal"> / {Math.round(weekGoal)}{label==='Calories'?' kcal':'g'}</span>
+          </span>
+        </div>
+      );
+    }
+
+    function WeightChart({ history, weightUnit }) {
+      const points = history.filter(w => w.value !== null);
+      if (points.length < 2) {
+        return <div className="chart-no-data">Log at least 2 weeks to see your trend</div>;
+      }
+
+      const W = 560, H = 150;
+      const pL = 44, pR = 12, pT = 12, pB = 30;
+      const plotW = W - pL - pR, plotH = H - pT - pB;
+
+      const vals  = points.map(p => p.value);
+      const minV  = Math.min(...vals), maxV = Math.max(...vals);
+      const pad   = Math.max((maxV - minV) * 0.35, 2);
+      const yMin  = minV - pad, yMax = maxV + pad, yRange = yMax - yMin;
+
+      const n   = points.length;
+      const xOf = i  => pL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+      const yOf = v  => pT + (1 - (v - yMin) / yRange) * plotH;
+
+      // y-axis ticks
+      const tickCount = 4;
+      const yTicks = Array.from({ length: tickCount + 1 }, (_, i) => {
+        const v = yMin + (yRange / tickCount) * i;
+        return { v, y: yOf(v) };
+      });
+
+      // x-axis: show month label at first point of each new month
+      const xLabels = [];
+      let lastMonth = null;
+      points.forEach((p, i) => {
+        const mo = p.weekKey.slice(0, 7);
+        if (mo !== lastMonth) {
+          lastMonth = mo;
+          const d = parseDate(p.weekKey);
+          xLabels.push({ x: xOf(i), label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) });
+        }
+      });
+
+      const linePts  = points.map((p, i) => `${xOf(i)},${yOf(p.value)}`).join(' ');
+      const areaPts  = `${xOf(0)},${pT + plotH} ${linePts} ${xOf(n - 1)},${pT + plotH}`;
+
+      // Trend direction for colour
+      const trend = points[n - 1].value - points[0].value;
+      const lineColor = trend < -0.5 ? 'var(--carbs)' : trend > 0.5 ? 'var(--danger)' : 'var(--accent)';
+
+      return (
+        <svg viewBox={`0 0 ${W} ${H}`} className="weight-chart-svg" aria-label="Weight history chart">
+          <defs>
+            <linearGradient id="wAreaGrad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%"   stopColor={lineColor} stopOpacity="0.22" />
+              <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          {/* Grid lines + Y labels */}
+          {yTicks.map((t, i) => (
+            <g key={i}>
+              <line x1={pL} y1={t.y} x2={W - pR} y2={t.y} stroke="var(--border)" strokeWidth="1" strokeDasharray="3,4" />
+              <text x={pL - 6} y={t.y + 4} textAnchor="end" fontSize="10" fill="var(--text-3)">{Math.round(t.v)}</text>
+            </g>
+          ))}
+
+          {/* X labels */}
+          {xLabels.map((l, i) => (
+            <text key={i} x={l.x} y={H - 4} textAnchor="middle" fontSize="10" fill="var(--text-3)">{l.label}</text>
+          ))}
+
+          {/* Area fill */}
+          <polygon points={areaPts} fill="url(#wAreaGrad)" />
+
+          {/* Line */}
+          <polyline points={linePts} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+
+          {/* Dots — highlight current week */}
+          {points.map((p, i) => (
+            <g key={i}>
+              <title>{fmtShort(p.weekKey)}: {p.value} {weightUnit}</title>
+              <circle cx={xOf(i)} cy={yOf(p.value)} r={p.isCurrent ? 5.5 : 3.5}
+                fill={p.isCurrent ? lineColor : 'var(--bg)'}
+                stroke={lineColor} strokeWidth="2.5" />
+            </g>
+          ))}
+        </svg>
+      );
+    }
+
+    function WeightTracker({ weekDates, weights, weightUnit, onUpdateWeight, onUpdateWeightUnit }) {
+      const currentWeekKey = weekDates[0]; // Monday = canonical week key
+      const [inputVal, setInputVal] = useState(
+        weights[currentWeekKey] !== undefined ? String(weights[currentWeekKey]) : ''
+      );
+
+      // Sync input when navigating to a different week
+      useEffect(() => {
+        setInputVal(weights[currentWeekKey] !== undefined ? String(weights[currentWeekKey]) : '');
+      }, [currentWeekKey]);
+
+      // Build full week-by-week history from earliest entry to current week
+      const buildHistory = () => {
+        const keys = Object.keys(weights).sort();
+        if (keys.length === 0) return [];
+        const result = [];
+        let key = keys[0];
+        while (key <= currentWeekKey) {
+          result.push({
+            weekKey:   key,
+            value:     weights[key] !== undefined ? weights[key] : null,
+            isCurrent: key === currentWeekKey,
+          });
+          key = addDays(key, 7);
+        }
+        return result;
+      };
+
+      const history      = buildHistory();
+      const filled       = history.filter(w => w.value !== null);
+      const currentVal   = weights[currentWeekKey];
+      const prevEntry    = [...filled].reverse().find(w => w.weekKey < currentWeekKey);
+      const firstEntry   = filled[0];
+      const lastEntry    = filled[filled.length - 1];
+      const totalChange  = firstEntry && lastEntry && filled.length >= 2
+        ? lastEntry.value - firstEntry.value : null;
+      const recentChange = currentVal !== undefined && prevEntry
+        ? currentVal - prevEntry.value : null;
+
+      const handleSave = () => {
+        const n = Number(inputVal);
+        if (inputVal === '' || isNaN(n) || n <= 0) return;
+        onUpdateWeight(currentWeekKey, inputVal);
+      };
+
+      return (
+        <div className="weight-tracker">
+          <div className="weight-tracker-header">
+            <div>
+              <div className="weight-tracker-title">⚖️ Weight Tracker</div>
+              <div className="weight-tracker-sub">Once-a-week check-in</div>
+            </div>
+            <div className="weight-unit-toggle">
+              <button type="button" className={`weight-unit-btn ${weightUnit==='lbs'?'active':''}`} onClick={() => onUpdateWeightUnit('lbs')}>lbs</button>
+              <button type="button" className={`weight-unit-btn ${weightUnit==='kg'?'active':''}`}  onClick={() => onUpdateWeightUnit('kg')}>kg</button>
+            </div>
+          </div>
+
+          {/* Weekly entry */}
+          <div className="weight-entry-card">
+            <div className="weight-entry-label">
+              <span>This Week</span>
+              <span className="weight-entry-date">{weekRange(weekDates)}</span>
+            </div>
+            <div className="weight-entry-row">
+              <input
+                className="weight-entry-input"
+                type="number" min="0" step="0.1"
+                placeholder={`Enter weight (${weightUnit})`}
+                value={inputVal}
+                onChange={e => setInputVal(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && handleSave()}
+              />
+              <button className="btn-primary weight-entry-save" onClick={handleSave}>
+                {currentVal !== undefined ? 'Update' : 'Save'}
+              </button>
+            </div>
+            {prevEntry && (
+              <div className="weight-entry-hint">
+                Last entry: {prevEntry.value} {weightUnit}
+                {recentChange !== null && (
+                  <span style={{
+                    color: recentChange < 0 ? 'var(--carbs)' : recentChange > 0 ? 'var(--danger)' : 'var(--text-2)',
+                    marginLeft: 8, fontWeight: 600
+                  }}>
+                    {recentChange > 0 ? '+' : ''}{recentChange.toFixed(1)} {weightUnit}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* History chart */}
+          <div className="weight-chart-wrap">
+            <div className="weight-chart-label">History</div>
+            <WeightChart history={history} weightUnit={weightUnit} />
+          </div>
+
+          {/* Stats */}
+          {filled.length >= 2 && (
+            <div className="weight-stats">
+              <div className="weight-stat">
+                <div className="weight-stat-label">Current</div>
+                <div className="weight-stat-val">
+                  {(currentVal ?? lastEntry.value).toFixed(1)}
+                  <span style={{fontSize:'0.65rem',color:'var(--text-2)',marginLeft:3}}>{weightUnit}</span>
+                </div>
+              </div>
+              <div className="weight-stat">
+                <div className="weight-stat-label">Starting</div>
+                <div className="weight-stat-val">{firstEntry.value.toFixed(1)}</div>
+              </div>
+              <div className="weight-stat">
+                <div className="weight-stat-label">Total Change</div>
+                <div className="weight-stat-val" style={{
+                  color: totalChange < 0 ? 'var(--carbs)' : totalChange > 0 ? 'var(--danger)' : 'var(--text)'
+                }}>
+                  {totalChange > 0 ? '+' : ''}{totalChange.toFixed(1)} {weightUnit}
+                </div>
+              </div>
+              <div className="weight-stat">
+                <div className="weight-stat-label">Check-ins</div>
+                <div className="weight-stat-val">{filled.length}</div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function WeekView({ weekDates, getDayTotals, weekTotals, goals, currentDate, onSelectDate, weights, weightUnit, onUpdateWeight, onUpdateWeightUnit }) {
+      const wg          = { calories:goals.calories*7, protein:goals.protein*7, carbs:goals.carbs*7, fat:goals.fat*7 };
+      const calRemaining = wg.calories - weekTotals.calories;
+      const calOver      = calRemaining < 0;
+      const calPct       = wg.calories > 0 ? Math.round((weekTotals.calories / wg.calories) * 100) : 0;
+
+      return (
+        <div className="week-view">
+          <div className="week-summary-card">
+            <div className="week-summary-header">
+              <div>
+                <div className="week-summary-title">Weekly Summary</div>
+                <div className="week-summary-sub">7-day total vs. goal</div>
+              </div>
+              <div className="week-cal-badge">
+                <div style={{color: calOver?'var(--danger)':'var(--calories)'}}>
+                  <span className="week-cal-num">{Math.round(weekTotals.calories)}</span>
+                  <span className="week-cal-label"> kcal · {calPct}%</span>
+                </div>
+                <div className="week-cal-remaining" style={{color: calOver?'var(--danger)':'var(--text-2)'}}>
+                  {calOver
+                    ? `${Math.abs(Math.round(calRemaining))} kcal over`
+                    : `${Math.round(calRemaining)} kcal remaining`}
+                </div>
+              </div>
+            </div>
+            <div className="week-macro-stack">
+              <WeekMacroRow label="Calories" value={weekTotals.calories} weekGoal={wg.calories} color="var(--calories)" />
+              <WeekMacroRow label="Protein"  value={weekTotals.protein}  weekGoal={wg.protein}  color="var(--protein)" />
+              <WeekMacroRow label="Carbs"    value={weekTotals.carbs}    weekGoal={wg.carbs}    color="var(--carbs)" />
+              <WeekMacroRow label="Fat"      value={weekTotals.fat}      weekGoal={wg.fat}      color="var(--fat)" />
+            </div>
+          </div>
+
+          <div className="week-days-grid">
+            {weekDates.map(d => {
+              const t     = getDayTotals(d);
+              const pct   = goals.calories > 0 ? Math.min((t.calories / goals.calories) * 100, 100) : 0;
+              const over  = goals.calories > 0 && t.calories > goals.calories;
+              const empty = t.calories === 0;
+              return (
+                <button key={d} className={`week-day-card ${d===currentDate?'selected':''} ${isToday(d)?'today':''}`} onClick={() => onSelectDate(d)}>
+                  <div className="week-day-abbr">{dayAbbr(d)}</div>
+                  <div className="week-day-date">{fmtShort(d)}</div>
+                  <div className="week-bar-track">
+                    <div className="week-bar-fill" style={{height:`${pct}%`, background: over?'var(--danger)':'var(--calories)', opacity: empty?0.15:1}} />
+                  </div>
+                  <div className={`week-day-cals ${over?'over':''} ${empty?'empty':''}`}>
+                    {empty ? '—' : Math.round(t.calories)}
+                  </div>
+                  <div className="week-day-unit">kcal</div>
+                </button>
+              );
+            })}
+          </div>
+          <div className="week-day-goal-line">Daily goal: {goals.calories} kcal · Tap a day to view details</div>
+
+          <WeightTracker
+            weekDates={weekDates}
+            weights={weights}
+            weightUnit={weightUnit}
+            onUpdateWeight={onUpdateWeight}
+            onUpdateWeightUnit={onUpdateWeightUnit}
+          />
+        </div>
+      );
+    }
+
+    // ── Add Food Modal ─────────────────────────────────
+    const MEAL_META = { breakfast:{label:'Breakfast',emoji:'🌅'}, lunch:{label:'Lunch',emoji:'☀️'}, dinner:{label:'Dinner',emoji:'🌙'}, snack:{label:'Snacks',emoji:'🍎'} };
+
+    function AddFoodModal({ meal, onAdd, onClose, customFoods, onDeleteCustomFood }) {
+      const [form, setForm] = useState({
+        name:'', servingUnit:'grams', servingAmount:'100', quantity:'100',
+        calories:'', protein:'', carbs:'', fat:'',
+      });
+      const [errors, setErrors] = useState({});
+      const [search, setSearch] = useState('');
+      const { label, emoji } = MEAL_META[meal];
+
+      const set = (k,v) => { setForm(f=>({...f,[k]:v})); setErrors(e=>({...e,[k]:undefined})); };
+
+      const setUnit = (unit) => {
+        const def = unit === 'grams' ? '100' : '1';
+        setForm(f => ({ ...f, servingUnit:unit, servingAmount:def, quantity:def }));
+      };
+
+      const unitLabel = form.servingUnit === 'grams' ? 'g' : form.servingUnit === 'oz' ? 'oz' : 'srv';
+
+      const mult = (Number(form.quantity) > 0 && Number(form.servingAmount) > 0)
+        ? Number(form.quantity) / Number(form.servingAmount) : 0;
+
+      const validate = () => {
+        const e = {};
+        if (!form.name.trim()) e.name = 'Required';
+        if (!Number(form.servingAmount) || Number(form.servingAmount) <= 0) e.servingAmount = 'Must be > 0';
+        if (!Number(form.quantity)      || Number(form.quantity)      <= 0) e.quantity      = 'Must be > 0';
+        if (form.calories==='' || isNaN(Number(form.calories)) || Number(form.calories)<0) e.calories = 'Required';
+        ['protein','carbs','fat'].forEach(k => { if(form[k]!=='' && (isNaN(Number(form[k]))||Number(form[k])<0)) e[k]='Invalid'; });
+        return e;
+      };
+
+      const round1 = (n) => Math.round(n * 10) / 10;
+
+      const submit = (ev) => {
+        ev.preventDefault();
+        const e = validate();
+        if (Object.keys(e).length) { setErrors(e); return; }
+        onAdd({
+          name: form.name.trim(),
+          servingUnit: form.servingUnit,
+          servingAmount: Number(form.servingAmount),
+          quantity: Number(form.quantity),
+          // per-serving reference (stored for My Foods recall)
+          caloriesPerServing: Number(form.calories) || 0,
+          proteinPerServing:  Number(form.protein)  || 0,
+          carbsPerServing:    Number(form.carbs)    || 0,
+          fatPerServing:      Number(form.fat)      || 0,
+          // actual logged values scaled by quantity
+          calories: round1((Number(form.calories)||0) * mult),
+          protein:  round1((Number(form.protein) ||0) * mult),
+          carbs:    round1((Number(form.carbs)   ||0) * mult),
+          fat:      round1((Number(form.fat)     ||0) * mult),
+        });
+      };
+
+      const fill = (f) => {
+        const unit = f.servingUnit || 'servings';
+        const amt  = String(f.servingAmount ?? 1);
+        setForm({
+          name: f.name,
+          servingUnit: unit,
+          servingAmount: amt,
+          quantity: amt,
+          calories: String(f.calories ?? f.caloriesPerServing ?? ''),
+          protein:  String(f.protein  ?? f.proteinPerServing  ?? ''),
+          carbs:    String(f.carbs    ?? f.carbsPerServing    ?? ''),
+          fat:      String(f.fat      ?? f.fatPerServing      ?? ''),
+        });
+        setErrors({});
+      };
+
+      const filteredCustom = customFoods.filter(f =>
+        f.name.toLowerCase().includes(search.toLowerCase())
+      );
+
+      const showPreview = mult > 0 && Number(form.calories) > 0;
+
+      return (
+        <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && onClose()}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title"><span>{emoji}</span> Add to {label}</div>
+              <button className="modal-close" onClick={onClose}>×</button>
+            </div>
+
+            {customFoods.length > 0 && (
+              <div className="my-foods">
+                <div className="my-foods-header">
+                  <div className="quick-label">My Foods</div>
+                  <input className="my-foods-search" placeholder="Search..." value={search} onChange={e=>setSearch(e.target.value)} />
+                </div>
+                <div className="quick-grid">
+                  {filteredCustom.length === 0
+                    ? <span className="my-foods-empty">No matches</span>
+                    : filteredCustom.map(f => (
+                        <div key={f.id} className="my-food-chip">
+                          <button className="my-food-fill" onClick={() => fill(f)}>{f.name}</button>
+                          <button className="my-food-del" onClick={() => onDeleteCustomFood(f.id)} title="Remove from My Foods">×</button>
+                        </div>
+                      ))
+                  }
+                </div>
+              </div>
+            )}
+
+            <div className="quick-foods">
+              <div className="quick-label">Quick Add</div>
+              <div className="quick-grid">
+                {QUICK_FOODS.map(f => <button key={f.name} className="quick-chip" onClick={() => fill(f)}>{f.name}</button>)}
+              </div>
+            </div>
+
+            <form className="modal-form" onSubmit={submit}>
+              <div className={`form-group full ${errors.name?'has-error':''}`}>
+                <label>Food Name</label>
+                <input type="text" placeholder="e.g. Grilled chicken" value={form.name} onChange={e=>set('name',e.target.value)} autoFocus />
+                {errors.name && <span className="form-error">{errors.name}</span>}
+              </div>
+
+              <div className="form-group full">
+                <label>Serving Unit</label>
+                <div className="unit-toggle">
+                  {['grams','oz','servings'].map(u => (
+                    <button key={u} type="button" className={`unit-btn ${form.servingUnit===u?'active':''}`} onClick={() => setUnit(u)}>
+                      {u === 'grams' ? 'Grams' : u === 'oz' ? 'Ounces' : 'Servings'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={`form-group ${errors.servingAmount?'has-error':''}`}>
+                <label>Per (reference) <span className="unit-tag">{unitLabel}</span></label>
+                <input type="number" min="0.01" step="any" value={form.servingAmount} onChange={e=>set('servingAmount',e.target.value)} />
+                {errors.servingAmount && <span className="form-error">{errors.servingAmount}</span>}
+              </div>
+
+              <div className={`form-group ${errors.quantity?'has-error':''}`}>
+                <label>Amount consumed <span className="unit-tag">{unitLabel}</span></label>
+                <input type="number" min="0.01" step="any" value={form.quantity} onChange={e=>set('quantity',e.target.value)} />
+                {errors.quantity && <span className="form-error">{errors.quantity}</span>}
+              </div>
+
+              <div className={`form-group ${errors.calories?'has-error':''}`}>
+                <label>Calories per {form.servingAmount}{unitLabel}</label>
+                <input type="number" min="0" step="1" placeholder="0" value={form.calories} onChange={e=>set('calories',e.target.value)} />
+                {errors.calories && <span className="form-error">{errors.calories}</span>}
+              </div>
+
+              <div className={`form-group ${errors.protein?'has-error':''}`}>
+                <label><span style={{color:'var(--protein)'}}>Protein</span> per {form.servingAmount}{unitLabel} (g)</label>
+                <input type="number" min="0" step="0.1" placeholder="0" value={form.protein} onChange={e=>set('protein',e.target.value)} />
+                {errors.protein && <span className="form-error">{errors.protein}</span>}
+              </div>
+
+              <div className={`form-group ${errors.carbs?'has-error':''}`}>
+                <label><span style={{color:'var(--carbs)'}}>Carbs</span> per {form.servingAmount}{unitLabel} (g)</label>
+                <input type="number" min="0" step="0.1" placeholder="0" value={form.carbs} onChange={e=>set('carbs',e.target.value)} />
+                {errors.carbs && <span className="form-error">{errors.carbs}</span>}
+              </div>
+
+              <div className={`form-group ${errors.fat?'has-error':''}`}>
+                <label><span style={{color:'var(--fat)'}}>Fat</span> per {form.servingAmount}{unitLabel} (g)</label>
+                <input type="number" min="0" step="0.1" placeholder="0" value={form.fat} onChange={e=>set('fat',e.target.value)} />
+                {errors.fat && <span className="form-error">{errors.fat}</span>}
+              </div>
+
+              {showPreview && (
+                <div className="calc-preview">
+                  <span className="calc-preview-label">Will log</span>
+                  <strong>{Math.round((Number(form.calories)||0) * mult)} kcal</strong>
+                  <span style={{color:'var(--protein)'}}>P {round1((Number(form.protein)||0)*mult)}g</span>
+                  <span style={{color:'var(--carbs)'}}>C {round1((Number(form.carbs)||0)*mult)}g</span>
+                  <span style={{color:'var(--fat)'}}>F {round1((Number(form.fat)||0)*mult)}g</span>
+                </div>
+              )}
+
+              <div className="modal-footer">
+                <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+                <button type="submit" className="btn-primary">Add Food</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Goals Modal ────────────────────────────────────
+    function GoalsModal({ goals, onSave, onClose }) {
+      const [form, setForm] = useState({ calories:String(goals.calories), protein:String(goals.protein), carbs:String(goals.carbs), fat:String(goals.fat) });
+      const [errors, setErrors] = useState({});
+
+      const set = (k,v) => { setForm(f=>({...f,[k]:v})); setErrors(e=>({...e,[k]:undefined})); };
+
+      const validate = () => {
+        const e = {};
+        ['calories','protein','carbs','fat'].forEach(k => { const n=Number(form[k]); if(form[k]===''||isNaN(n)||n<1) e[k]='Enter a value > 0'; });
+        return e;
+      };
+
+      const submit = (ev) => {
+        ev.preventDefault();
+        const e = validate();
+        if (Object.keys(e).length) { setErrors(e); return; }
+        onSave({ calories:Number(form.calories), protein:Number(form.protein), carbs:Number(form.carbs), fat:Number(form.fat) });
+      };
+
+      const pCal = (Number(form.protein)||0)*4, cCal = (Number(form.carbs)||0)*4, fCal = (Number(form.fat)||0)*9;
+      const total = Number(form.calories)||1;
+      const pp = Math.round((pCal/total)*100), cp = Math.round((cCal/total)*100), fp = Math.round((fCal/total)*100);
+
+      return (
+        <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && onClose()}>
+          <div className="modal">
+            <div className="modal-header">
+              <div className="modal-title">🎯 Daily Goals</div>
+              <button className="modal-close" onClick={onClose}>×</button>
+            </div>
+            <form className="modal-form" onSubmit={submit}>
+              <div className={`form-group full ${errors.calories?'has-error':''}`}>
+                <label><span style={{color:'var(--calories)'}}>Calories</span> (kcal/day)</label>
+                <input type="number" min="1" step="1" value={form.calories} onChange={e=>set('calories',e.target.value)} autoFocus />
+                {errors.calories && <span className="form-error">{errors.calories}</span>}
+              </div>
+              <div className={`form-group ${errors.protein?'has-error':''}`}>
+                <label><span style={{color:'var(--protein)'}}>Protein</span> (g/day)</label>
+                <input type="number" min="1" step="5" value={form.protein} onChange={e=>set('protein',e.target.value)} />
+                {errors.protein && <span className="form-error">{errors.protein}</span>}
+              </div>
+              <div className={`form-group ${errors.carbs?'has-error':''}`}>
+                <label><span style={{color:'var(--carbs)'}}>Carbs</span> (g/day)</label>
+                <input type="number" min="1" step="5" value={form.carbs} onChange={e=>set('carbs',e.target.value)} />
+                {errors.carbs && <span className="form-error">{errors.carbs}</span>}
+              </div>
+              <div className={`form-group ${errors.fat?'has-error':''}`}>
+                <label><span style={{color:'var(--fat)'}}>Fat</span> (g/day)</label>
+                <input type="number" min="1" step="5" value={form.fat} onChange={e=>set('fat',e.target.value)} />
+                {errors.fat && <span className="form-error">{errors.fat}</span>}
+              </div>
+              {(pCal+cCal+fCal)>0 && (
+                <div className="macro-breakdown full">
+                  <div className="macro-breakdown-title">Macro Split (from grams entered)</div>
+                  <div className="macro-breakdown-bar">
+                    <div style={{width:`${pp}%`, background:'var(--protein)'}} />
+                    <div style={{width:`${cp}%`, background:'var(--carbs)'}} />
+                    <div style={{width:`${fp}%`, background:'var(--fat)'}} />
+                  </div>
+                  <div className="macro-breakdown-labels">
+                    <span style={{color:'var(--protein)'}}>P {pp}%</span>
+                    <span style={{color:'var(--carbs)'}}>C {cp}%</span>
+                    <span style={{color:'var(--fat)'}}>F {fp}%</span>
+                    <span className="macro-breakdown-total">{pCal+cCal+fCal} macro kcal</span>
+                  </div>
+                </div>
+              )}
+              <div className="modal-footer">
+                <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+                <button type="submit" className="btn-primary">Save Goals</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Header ─────────────────────────────────────────
+    function Header({ currentDate, weekDates, view, onViewChange, onNavigateDay, onNavigateWeek, onToday, onOpenGoals }) {
+      const isDay = view === 'day';
+      return (
+        <header className="header">
+          <div className="header-top">
+            <div className="brand">
+              <span className="brand-icon">⚡</span>
+              <span className="brand-name">MacroTrack</span>
+            </div>
+            <button className="btn-goals" onClick={onOpenGoals}>🎯 Set Goals</button>
+          </div>
+          <div className="header-nav">
+            <div className="view-toggle">
+              <button className={`view-btn ${isDay?'active':''}`} onClick={() => onViewChange('day')}>Day</button>
+              <button className={`view-btn ${!isDay?'active':''}`} onClick={() => onViewChange('week')}>Week</button>
+            </div>
+            <div className="date-nav">
+              <button className="nav-arrow" onClick={() => isDay ? onNavigateDay(-1) : onNavigateWeek(-1)}>‹</button>
+              <div className="date-label">{isDay ? fmtLong(currentDate) : weekRange(weekDates)}</div>
+              <button className="nav-arrow" onClick={() => isDay ? onNavigateDay(1) : onNavigateWeek(1)}>›</button>
+            </div>
+            {!isToday(currentDate) && <button className="today-btn" onClick={onToday}>Today</button>}
+          </div>
+        </header>
+      );
+    }
+
+    // ── App ────────────────────────────────────────────
+    function App() {
+      const [data, setData] = useState(() => loadData() || { goals: DEFAULT_GOALS, entries: {}, customFoods: [], weights: {}, weightUnit: 'lbs' });
+      const [currentDate, setCurrentDate] = useState(fmtDate(new Date()));
+      const [view, setView] = useState('day');
+      const [addModal, setAddModal] = useState(null);
+      const [goalsOpen, setGoalsOpen] = useState(false);
+
+      useEffect(() => { saveData(data); }, [data]);
+
+      const getDayEntries = (d) => data.entries[d] || emptyDay();
+      const getDayTotals  = (d) => sumMacros(Object.values(getDayEntries(d)).flat());
+
+      const weekDates  = getWeekDates(currentDate);
+      const weekTotals = weekDates.reduce((a,d) => { const t=getDayTotals(d); return { calories:a.calories+t.calories, protein:a.protein+t.protein, carbs:a.carbs+t.carbs, fat:a.fat+t.fat }; }, {calories:0,protein:0,carbs:0,fat:0});
+
+      const addFood = (meal, food) => {
+        setData(prev => {
+          const day = prev.entries[currentDate] || emptyDay();
+          // Store per-serving reference in customFoods (not the scaled values)
+          const ref = {
+            name:          food.name,
+            servingUnit:   food.servingUnit   || 'servings',
+            servingAmount: food.servingAmount ?? 1,
+            calories: food.caloriesPerServing ?? food.calories,
+            protein:  food.proteinPerServing  ?? food.protein,
+            carbs:    food.carbsPerServing    ?? food.carbs,
+            fat:      food.fatPerServing      ?? food.fat,
+          };
+          const existing = (prev.customFoods || []);
+          const idx = existing.findIndex(f => f.name.toLowerCase() === ref.name.toLowerCase());
+          const refWithId = { ...ref, id: idx >= 0 ? existing[idx].id : `cf-${Date.now()}-${Math.random()}` };
+          const newCustomFoods = idx >= 0
+            ? [refWithId, ...existing.filter((_, i) => i !== idx)]
+            : [refWithId, ...existing];
+          return {
+            ...prev,
+            entries: { ...prev.entries, [currentDate]: { ...day, [meal]: [...day[meal], {...food, id:`${Date.now()}-${Math.random()}`}] } },
+            customFoods: newCustomFoods,
+          };
+        });
+        setAddModal(null);
+      };
+
+      const removeFood = (meal, id) => {
+        setData(prev => {
+          const day = prev.entries[currentDate] || emptyDay();
+          return { ...prev, entries: { ...prev.entries, [currentDate]: { ...day, [meal]: day[meal].filter(f=>f.id!==id) } } };
+        });
+      };
+
+      const deleteCustomFood = (id) => {
+        setData(prev => ({ ...prev, customFoods: (prev.customFoods || []).filter(f => f.id !== id) }));
+      };
+
+      const updateWeight = (date, val) => {
+        setData(prev => {
+          const weights = { ...prev.weights };
+          if (val === '' || val === null) delete weights[date];
+          else weights[date] = Number(val);
+          return { ...prev, weights };
+        });
+      };
+
+      const updateWeightUnit = (unit) => {
+        setData(prev => ({ ...prev, weightUnit: unit }));
+      };
+
+      return (
+        <div className="app">
+          <Header
+            currentDate={currentDate} weekDates={weekDates} view={view}
+            onViewChange={setView}
+            onNavigateDay={n => setCurrentDate(d => addDays(d,n))}
+            onNavigateWeek={n => setCurrentDate(d => addDays(d,n*7))}
+            onToday={() => setCurrentDate(fmtDate(new Date()))}
+            onOpenGoals={() => setGoalsOpen(true)}
+          />
+          <main className="main">
+            {view==='day'
+              ? <DayView entries={getDayEntries(currentDate)} totals={getDayTotals(currentDate)} goals={data.goals} onAddFood={m=>setAddModal({meal:m})} onRemoveFood={removeFood} />
+              : <WeekView weekDates={weekDates} getDayTotals={getDayTotals} weekTotals={weekTotals} goals={data.goals} currentDate={currentDate} onSelectDate={d=>{setCurrentDate(d);setView('day');}} weights={data.weights||{}} weightUnit={data.weightUnit||'lbs'} onUpdateWeight={updateWeight} onUpdateWeightUnit={updateWeightUnit} />
+            }
+          </main>
+          {addModal && <AddFoodModal meal={addModal.meal} onAdd={food=>addFood(addModal.meal,food)} onClose={()=>setAddModal(null)} customFoods={data.customFoods || []} onDeleteCustomFood={deleteCustomFood} />}
+          {goalsOpen && <GoalsModal goals={data.goals} onSave={g=>{setData(p=>({...p,goals:g}));setGoalsOpen(false);}} onClose={()=>setGoalsOpen(false)} />}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
