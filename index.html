@@ -1109,17 +1109,17 @@
               </div>
               <div className={`form-group ${errors.protein?'has-error':''}`}>
                 <label><span style={{color:'var(--protein)'}}>Protein</span> (g/day)</label>
-                <input type="number" min="1" step="5" value={form.protein} onChange={e=>set('protein',e.target.value)} />
+                <input type="number" min="1" step="1" value={form.protein} onChange={e=>set('protein',e.target.value)} />
                 {errors.protein && <span className="form-error">{errors.protein}</span>}
               </div>
               <div className={`form-group ${errors.carbs?'has-error':''}`}>
                 <label><span style={{color:'var(--carbs)'}}>Carbs</span> (g/day)</label>
-                <input type="number" min="1" step="5" value={form.carbs} onChange={e=>set('carbs',e.target.value)} />
+                <input type="number" min="1" step="1" value={form.carbs} onChange={e=>set('carbs',e.target.value)} />
                 {errors.carbs && <span className="form-error">{errors.carbs}</span>}
               </div>
               <div className={`form-group ${errors.fat?'has-error':''}`}>
                 <label><span style={{color:'var(--fat)'}}>Fat</span> (g/day)</label>
-                <input type="number" min="1" step="5" value={form.fat} onChange={e=>set('fat',e.target.value)} />
+                <input type="number" min="1" step="1" value={form.fat} onChange={e=>set('fat',e.target.value)} />
                 {errors.fat && <span className="form-error">{errors.fat}</span>}
               </div>
               {(pCal+cCal+fCal)>0 && (
