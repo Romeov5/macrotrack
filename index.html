@@ -7,7 +7,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/lib/quagga.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -407,12 +407,10 @@
     .btn-scan:hover { background: rgba(99,102,241,0.1); border-color: var(--accent); border-style: solid; }
     .scanner-body { display: flex; flex-direction: column; }
     .barcode-reader-div { width: 100%; background: #000; min-height: 240px; }
-    /* Override html5-qrcode defaults to hide its built-in UI chrome */
-    #barcode-reader { border: none !important; }
-    #barcode-reader__scan_region { background: transparent !important; }
-    #barcode-reader__scan_region img { display: none !important; }
-    #barcode-reader__dashboard { display: none !important; }
-    #barcode-reader video { width: 100% !important; object-fit: cover; }
+    /* Quagga2 viewport styling */
+    #barcode-reader { position: relative; overflow: hidden; }
+    #barcode-reader video { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
+    #barcode-reader canvas.drawingBuffer { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
     .scanner-status { padding: 12px 20px 4px; text-align: center; min-height: 38px; }
     .scan-hint    { font-size: 0.82rem; color: var(--text-2); }
     .scan-loading { font-size: 0.88rem; color: var(--calories); font-weight: 600; }
@@ -921,79 +919,132 @@
       const scannerRef = React.useRef(null);
       const { label, emoji } = MEAL_META[meal];
 
-      // ── Scanner lifecycle ──────────────────────────────
+      // ── Scanner lifecycle (Quagga2) ────────────────────
       useEffect(() => {
         if (!scanMode) return;
         setScanState('scanning');
-        let settled = false;
 
-        // Explicitly list 1D barcode formats — food packaging uses EAN-13 / UPC-A
-        const formats = [
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.QR_CODE,
-        ];
-        const qr = new Html5Qrcode('barcode-reader', { formatsToSupport: formats });
-        scannerRef.current = qr;
+        let active = true;
+        let lastCode = null;
+        let streak = 0;
 
-        qr.start(
-          { facingMode: 'environment' },
-          {
-            fps: 15,
-            // Adaptive qrbox — scales to actual camera dimensions on any phone
-            qrbox: (w, h) => ({ width: Math.floor(w * 0.9), height: Math.floor(h * 0.4) }),
-          },
-          async (barcode) => {
-            if (settled) return;
-            settled = true;
-            try { await qr.stop(); } catch {}
-            scannerRef.current = null;
-            setScanState('loading');
+        const onDetected = async (result) => {
+          if (!active) return;
+          const code = result && result.codeResult && result.codeResult.code;
+          if (!code) return;
 
-            try {
-              const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`);
-              const json = await res.json();
-              if (json.status === 1 && json.product) {
-                const p  = json.product;
-                const n  = p.nutriments || {};
-                const r1 = v => String(Math.round((Number(v) || 0) * 10) / 10);
-                setForm({
-                  name:          ((p.product_name || p.product_name_en || p.generic_name || '').trim()) || 'Scanned Product',
-                  servingUnit:   'grams',
-                  servingAmount: '100',
-                  quantity:      String(parseFloat(p.serving_quantity) || 100),
-                  calories:      String(Math.round(n['energy-kcal_100g'] || n['energy-kcal'] || 0)),
-                  protein:       r1(n['proteins_100g']      || n.proteins      || 0),
-                  carbs:         r1(n['carbohydrates_100g'] || n.carbohydrates || 0),
-                  fat:           r1(n['fat_100g']           || n.fat           || 0),
-                });
-                setErrors({});
-                setScanMode(false);
+          // Require 3 consecutive reads of the same code to reduce false positives
+          if (code === lastCode) { streak++; } else { lastCode = code; streak = 1; }
+          if (streak < 3) return;
+
+          active = false;
+          Quagga.offDetected(onDetected);
+          try { Quagga.stop(); } catch {}
+          setScanState('loading');
+
+          try {
+            // Try serving-size endpoint first, fall back to v0 product endpoint
+            const res  = await fetch(`https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(code)}?fields=product_name,product_name_en,generic_name,brands,serving_quantity,serving_quantity_unit,nutriments`);
+            const json = await res.json();
+
+            if (json.status === 1 && json.product) {
+              const p = json.product;
+              const n = p.nutriments || {};
+
+              // Name: prefer full name, fall back to brand + generic
+              const rawName = (p.product_name || p.product_name_en || p.generic_name || '').trim();
+              const brand   = (p.brands || '').split(',')[0].trim();
+              const name    = rawName || (brand ? `${brand} Product` : 'Scanned Product');
+
+              // Serving size: use labeled serving if available, else 100 g
+              const srvQty  = parseFloat(p.serving_quantity) || 0;
+              const srvUnit = (p.serving_quantity_unit || 'g').toLowerCase();
+              const useServing = srvQty > 0;
+
+              // Nutriments are always per-100 g in Open Food Facts v2
+              // If using a labeled serving we scale; otherwise we present per-100 g baseline
+              const per100Cal   = Number(n['energy-kcal_100g'] || n['energy-kcal'] || 0);
+              const per100Pro   = Number(n['proteins_100g']      || n.proteins      || 0);
+              const per100Carb  = Number(n['carbohydrates_100g'] || n.carbohydrates || 0);
+              const per100Fat   = Number(n['fat_100g']           || n.fat           || 0);
+
+              let servingAmount, quantity, calories, protein, carbs, fat, servingUnit;
+
+              if (useServing) {
+                // Map OFf unit to our unit options
+                const unitMap = { g: 'grams', oz: 'oz', ml: 'grams' /* treat ml like g */ };
+                servingUnit   = unitMap[srvUnit] || 'grams';
+                servingAmount = String(srvQty);
+                quantity      = String(srvQty);
+                const scale   = srvQty / 100;
+                calories = String(Math.round(per100Cal  * scale));
+                protein  = String(Math.round(per100Pro  * scale * 10) / 10);
+                carbs    = String(Math.round(per100Carb * scale * 10) / 10);
+                fat      = String(Math.round(per100Fat  * scale * 10) / 10);
               } else {
-                setScanState('notfound');
-                setTimeout(() => setScanMode(false), 2500);
+                // No labeled serving — default to 1 serving using per-100g values as the reference
+                servingUnit   = 'servings';
+                servingAmount = '1';
+                quantity      = '1';
+                calories = String(Math.round(per100Cal));
+                protein  = String(Math.round(per100Pro  * 10) / 10);
+                carbs    = String(Math.round(per100Carb * 10) / 10);
+                fat      = String(Math.round(per100Fat  * 10) / 10);
               }
-            } catch {
-              setScanState('error');
-              setTimeout(() => setScanMode(false), 2500);
+
+              setForm({ name, servingUnit, servingAmount, quantity, calories, protein, carbs, fat });
+              setErrors({});
+              setScanMode(false);
+            } else {
+              setScanState('notfound');
+              setTimeout(() => setScanMode(false), 2800);
             }
+          } catch {
+            setScanState('error');
+            setTimeout(() => setScanMode(false), 2800);
+          }
+        };
+
+        Quagga.init({
+          inputStream: {
+            type: 'LiveStream',
+            target: document.getElementById('barcode-reader'),
+            constraints: {
+              facingMode: 'environment',
+              width:  { ideal: 1280 },
+              height: { ideal: 720 },
+            },
           },
-          () => {}
-        ).catch(() => setScanState('camerror'));
+          locator:      { patchSize: 'medium', halfSample: true },
+          numOfWorkers: navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 2,
+          decoder: {
+            readers: [
+              'ean_reader',       // EAN-13 (most grocery barcodes worldwide)
+              'ean_8_reader',     // EAN-8
+              'upc_reader',       // UPC-A (North America)
+              'upc_e_reader',     // UPC-E (compressed UPC)
+              'code_128_reader',  // Code 128 (some supplements/specialty)
+            ],
+            multiple: false,
+          },
+          locate: true,
+        }, (err) => {
+          if (!active) return;
+          if (err) { setScanState('camerror'); return; }
+          Quagga.start();
+          Quagga.onDetected(onDetected);
+        });
 
         return () => {
-          settled = true;
-          if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); scannerRef.current = null; }
+          active = false;
+          Quagga.offDetected(onDetected);
+          try { Quagga.stop(); } catch {}
         };
       }, [scanMode]);
 
       // Stop scanner if modal unmounts while scanning
       useEffect(() => () => {
-        if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); }
+        try { Quagga.stop(); } catch {}
       }, []);
 
       // ── Form helpers ───────────────────────────────────
