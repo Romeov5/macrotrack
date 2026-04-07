@@ -133,6 +133,30 @@
     .progress-track { height: 6px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
     .progress-fill { height: 100%; border-radius: 99px; transition: width 0.35s ease; }
 
+    /* ── Burned Card ── */
+    .burned-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r); padding: 13px 16px;
+      display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+    }
+    .burned-icon { font-size: 1.35rem; flex-shrink: 0; }
+    .burned-info { flex: 1; min-width: 0; }
+    .burned-label { font-size: 0.88rem; font-weight: 600; }
+    .burned-sub   { font-size: 0.75rem; color: var(--text-2); margin-top: 1px; }
+    .burned-boost { font-size: 0.75rem; color: #f97316; font-weight: 600; margin-top: 1px; }
+    .burned-input-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .burned-input {
+      width: 82px; padding: 6px 10px; text-align: right;
+      background: var(--surface2); border: 1px solid var(--border2);
+      border-radius: var(--r-sm); color: var(--text); font-size: 0.9rem;
+      outline: none; -moz-appearance: textfield;
+    }
+    .burned-input::-webkit-outer-spin-button,
+    .burned-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .burned-input:focus { border-color: #f97316; }
+    .burned-unit { font-size: 0.8rem; color: var(--text-2); }
+    .summary-goal-bonus { color: #f97316; font-weight: 600; }
+
     /* ── Meals Grid ── */
     .meals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     @media (max-width: 560px) { .meals-grid { grid-template-columns: 1fr; } }
@@ -496,11 +520,13 @@
     }
 
     // ── Summary Card ───────────────────────────────────
-    function SummaryCard({ totals, goals }) {
-      const calPct = goals.calories>0 ? Math.round((totals.calories/goals.calories)*100) : 0;
-      const remaining = goals.calories - totals.calories;
-      const over = remaining < 0;
-      const ringDeg = Math.min(calPct, 100) * 3.6;
+    function SummaryCard({ totals, goals, burned }) {
+      const bonus        = Math.round((burned || 0) * 0.5);
+      const effectiveCal = goals.calories + bonus;
+      const calPct    = effectiveCal > 0 ? Math.round((totals.calories / effectiveCal) * 100) : 0;
+      const remaining = effectiveCal - totals.calories;
+      const over      = remaining < 0;
+      const ringDeg   = Math.min(calPct, 100) * 3.6;
       return (
         <div className="summary-card">
           <div className="summary-cal">
@@ -512,16 +538,58 @@
             </div>
             <div className="summary-cal-info">
               <div className="summary-cal-label">Calories</div>
-              <div className="summary-remaining" style={{color: over?'var(--danger)':'var(--text-secondary)'}}>
+              <div className="summary-remaining" style={{color: over?'var(--danger)':'inherit'}}>
                 {over ? `${Math.abs(Math.round(remaining))} over goal` : `${Math.round(remaining)} remaining`}
               </div>
-              <div className="summary-goal-text">Goal: {goals.calories} kcal</div>
+              <div className="summary-goal-text">
+                Goal: {goals.calories}
+                {bonus > 0 && <span className="summary-goal-bonus"> +{bonus} exercise = {effectiveCal}</span>}
+                {' '}kcal
+              </div>
             </div>
           </div>
           <div className="macro-bars">
             <MacroBar label="Protein" value={totals.protein} goal={goals.protein} color="var(--protein)" />
             <MacroBar label="Carbs"   value={totals.carbs}   goal={goals.carbs}   color="var(--carbs)" />
             <MacroBar label="Fat"     value={totals.fat}     goal={goals.fat}     color="var(--fat)" />
+          </div>
+        </div>
+      );
+    }
+
+    // ── Burned Card ───────────────────────────────────
+    function BurnedCard({ burned, onUpdate }) {
+      const [val, setVal] = useState(burned > 0 ? String(burned) : '');
+      const bonus = Math.round((burned || 0) * 0.5);
+
+      // Keep local input in sync if parent value changes (e.g. date switch)
+      useEffect(() => { setVal(burned > 0 ? String(burned) : ''); }, [burned]);
+
+      const commit = () => {
+        const n = parseFloat(val);
+        onUpdate(isNaN(n) || n <= 0 ? 0 : Math.round(n));
+      };
+
+      return (
+        <div className="burned-card">
+          <span className="burned-icon">🔥</span>
+          <div className="burned-info">
+            <div className="burned-label">Exercise Calories Burned</div>
+            {bonus > 0
+              ? <div className="burned-boost">+{bonus} kcal added to today's goal (50% of burned)</div>
+              : <div className="burned-sub">Adds 50% of burned calories to your daily goal</div>
+            }
+          </div>
+          <div className="burned-input-wrap">
+            <input
+              className="burned-input"
+              type="number" min="0" step="10" placeholder="0"
+              value={val}
+              onChange={e => setVal(e.target.value)}
+              onBlur={commit}
+              onKeyDown={e => e.key === 'Enter' && (e.target.blur(), commit())}
+            />
+            <span className="burned-unit">kcal</span>
           </div>
         </div>
       );
@@ -584,10 +652,11 @@
     }
 
     // ── Day View ───────────────────────────────────────
-    function DayView({ entries, totals, goals, onAddFood, onRemoveFood }) {
+    function DayView({ entries, totals, goals, burned, onUpdateBurned, onAddFood, onRemoveFood }) {
       return (
         <div className="day-view">
-          <SummaryCard totals={totals} goals={goals} />
+          <SummaryCard totals={totals} goals={goals} burned={burned} />
+          <BurnedCard burned={burned} onUpdate={onUpdateBurned} />
           <div className="meals-grid">
             {MEALS.map(({key,label,emoji}) => (
               <MealSection
@@ -836,8 +905,8 @@
       );
     }
 
-    function WeekView({ weekDates, getDayTotals, weekTotals, goals, currentDate, onSelectDate, weights, weightUnit, onUpdateWeight, onUpdateWeightUnit }) {
-      const wg          = { calories:goals.calories*7, protein:goals.protein*7, carbs:goals.carbs*7, fat:goals.fat*7 };
+    function WeekView({ weekDates, getDayTotals, weekTotals, goals, currentDate, onSelectDate, weights, weightUnit, onUpdateWeight, onUpdateWeightUnit, getDayBurned, weekBurnedBonus }) {
+      const wg          = { calories: goals.calories * 7 + (weekBurnedBonus || 0), protein:goals.protein*7, carbs:goals.carbs*7, fat:goals.fat*7 };
       const calRemaining = wg.calories - weekTotals.calories;
       const calOver      = calRemaining < 0;
       const calPct       = wg.calories > 0 ? Math.round((weekTotals.calories / wg.calories) * 100) : 0;
@@ -848,7 +917,11 @@
             <div className="week-summary-header">
               <div>
                 <div className="week-summary-title">Weekly Summary</div>
-                <div className="week-summary-sub">7-day total vs. goal</div>
+                <div className="week-summary-sub">
+                  {weekBurnedBonus > 0
+                    ? `Goal: ${goals.calories * 7} + ${weekBurnedBonus} exercise = ${wg.calories} kcal`
+                    : '7-day total vs. goal'}
+                </div>
               </div>
               <div className="week-cal-badge">
                 <div style={{color: calOver?'var(--danger)':'var(--calories)'}}>
@@ -872,9 +945,11 @@
 
           <div className="week-days-grid">
             {weekDates.map(d => {
-              const t     = getDayTotals(d);
-              const pct   = goals.calories > 0 ? Math.min((t.calories / goals.calories) * 100, 100) : 0;
-              const over  = goals.calories > 0 && t.calories > goals.calories;
+              const t            = getDayTotals(d);
+              const dayBonus     = Math.round((getDayBurned ? getDayBurned(d) : 0) * 0.5);
+              const dayGoal      = goals.calories + dayBonus;
+              const pct   = dayGoal > 0 ? Math.min((t.calories / dayGoal) * 100, 100) : 0;
+              const over  = dayGoal > 0 && t.calories > dayGoal;
               const empty = t.calories === 0;
               return (
                 <button key={d} className={`week-day-card ${d===currentDate?'selected':''} ${isToday(d)?'today':''}`} onClick={() => onSelectDate(d)}>
@@ -891,7 +966,9 @@
               );
             })}
           </div>
-          <div className="week-day-goal-line">Daily goal: {goals.calories} kcal · Tap a day to view details</div>
+          <div className="week-day-goal-line">
+            Daily goal: {goals.calories} kcal{weekBurnedBonus > 0 && <span className="summary-goal-bonus"> +{weekBurnedBonus} exercise this week</span>} · Tap a day to view details
+          </div>
 
           <WeightTracker
             weekDates={weekDates}
@@ -956,40 +1033,73 @@
               const brand   = (p.brands || '').split(',')[0].trim();
               const name    = rawName || (brand ? `${brand} Product` : 'Scanned Product');
 
-              // Serving size: use labeled serving if available, else 100 g
+              // Always-available per-100g baseline from Open Food Facts
+              const per100Cal  = Number(n['energy-kcal_100g'] || n['energy-kcal'] || 0);
+              const per100Pro  = Number(n['proteins_100g']      || n.proteins      || 0);
+              const per100Carb = Number(n['carbohydrates_100g'] || n.carbohydrates || 0);
+              const per100Fat  = Number(n['fat_100g']           || n.fat           || 0);
+
+              // Per-serving values — OFf populates these when a serving size is declared
+              const srvCal  = Number(n['energy-kcal_serving'] || 0);
+              const srvPro  = Number(n['proteins_serving']      || 0);
+              const srvCarb = Number(n['carbohydrates_serving'] || 0);
+              const srvFat  = Number(n['fat_serving']           || 0);
+
+              // Labeled serving quantity and unit from the product record
               const srvQty  = parseFloat(p.serving_quantity) || 0;
-              const srvUnit = (p.serving_quantity_unit || 'g').toLowerCase();
-              const useServing = srvQty > 0;
+              const srvUnit = (p.serving_quantity_unit || '').toLowerCase().trim();
 
-              // Nutriments are always per-100 g in Open Food Facts v2
-              // If using a labeled serving we scale; otherwise we present per-100 g baseline
-              const per100Cal   = Number(n['energy-kcal_100g'] || n['energy-kcal'] || 0);
-              const per100Pro   = Number(n['proteins_100g']      || n.proteins      || 0);
-              const per100Carb  = Number(n['carbohydrates_100g'] || n.carbohydrates || 0);
-              const per100Fat   = Number(n['fat_100g']           || n.fat           || 0);
+              const OZ_TO_G = 28.3495;
+              const r1 = v => String(Math.round(Number(v) * 10) / 10);
 
-              let servingAmount, quantity, calories, protein, carbs, fat, servingUnit;
+              let servingUnit, servingAmount, quantity, calories, protein, carbs, fat;
 
-              if (useServing) {
-                // Map OFf unit to our unit options
-                const unitMap = { g: 'grams', oz: 'oz', ml: 'grams' /* treat ml like g */ };
-                servingUnit   = unitMap[srvUnit] || 'grams';
+              if (srvQty > 0 && (srvUnit === 'g' || srvUnit === 'ml' || srvUnit === '')) {
+                // ── Case 1: Serving weight given in grams (or ml ≈ g) ──────────────
+                // Scale macros from per-100g to the actual gram serving weight.
+                // This makes "servingAmount = X grams" and "1 serving = X grams" align perfectly.
+                servingUnit   = 'grams';
                 servingAmount = String(srvQty);
                 quantity      = String(srvQty);
-                const scale   = srvQty / 100;
-                calories = String(Math.round(per100Cal  * scale));
-                protein  = String(Math.round(per100Pro  * scale * 10) / 10);
-                carbs    = String(Math.round(per100Carb * scale * 10) / 10);
-                fat      = String(Math.round(per100Fat  * scale * 10) / 10);
+                const gScale  = srvQty / 100;
+                // Prefer OFf's own _serving values if available; they're more accurate
+                calories = srvCal  ? String(Math.round(srvCal))  : String(Math.round(per100Cal  * gScale));
+                protein  = srvPro  ? r1(srvPro)                  : r1(per100Pro  * gScale);
+                carbs    = srvCarb ? r1(srvCarb)                 : r1(per100Carb * gScale);
+                fat      = srvFat  ? r1(srvFat)                  : r1(per100Fat  * gScale);
+
+              } else if (srvQty > 0 && srvUnit === 'oz') {
+                // ── Case 2: Serving given in ounces ─────────────────────────────────
+                // Keep oz as the unit; convert to grams internally to scale macros from per-100g.
+                servingUnit   = 'oz';
+                servingAmount = String(srvQty);
+                quantity      = String(srvQty);
+                const ozScale = (srvQty * OZ_TO_G) / 100;
+                calories = srvCal  ? String(Math.round(srvCal))  : String(Math.round(per100Cal  * ozScale));
+                protein  = srvPro  ? r1(srvPro)                  : r1(per100Pro  * ozScale);
+                carbs    = srvCarb ? r1(srvCarb)                 : r1(per100Carb * ozScale);
+                fat      = srvFat  ? r1(srvFat)                  : r1(per100Fat  * ozScale);
+
+              } else if (srvCal > 0) {
+                // ── Case 3: No gram/oz weight, but OFf has per-serving nutriments ──
+                // Use those directly — 1 serving = labeled serving macros.
+                servingUnit   = 'servings';
+                servingAmount = '1';
+                quantity      = '1';
+                calories = String(Math.round(srvCal));
+                protein  = r1(srvPro);
+                carbs    = r1(srvCarb);
+                fat      = r1(srvFat);
+
               } else {
-                // No labeled serving — default to 1 serving using per-100g values as the reference
+                // ── Case 4: No serving data at all — treat per-100g as 1 serving ──
                 servingUnit   = 'servings';
                 servingAmount = '1';
                 quantity      = '1';
                 calories = String(Math.round(per100Cal));
-                protein  = String(Math.round(per100Pro  * 10) / 10);
-                carbs    = String(Math.round(per100Carb * 10) / 10);
-                fat      = String(Math.round(per100Fat  * 10) / 10);
+                protein  = r1(per100Pro);
+                carbs    = r1(per100Carb);
+                fat      = r1(per100Fat);
               }
 
               setForm({ name, servingUnit, servingAmount, quantity, calories, protein, carbs, fat });
@@ -1332,7 +1442,7 @@
 
     // ── App ────────────────────────────────────────────
     function App() {
-      const [data, setData] = useState(() => loadData() || { goals: DEFAULT_GOALS, entries: {}, customFoods: [], weights: {}, weightUnit: 'lbs' });
+      const [data, setData] = useState(() => { const d = loadData(); return d || { goals: DEFAULT_GOALS, entries: {}, customFoods: [], weights: {}, weightUnit: 'lbs', burned: {} }; });
       const [currentDate, setCurrentDate] = useState(fmtDate(new Date()));
       const [view, setView] = useState('day');
       const [addModal, setAddModal] = useState(null);
@@ -1342,9 +1452,11 @@
 
       const getDayEntries = (d) => data.entries[d] || emptyDay();
       const getDayTotals  = (d) => sumMacros(Object.values(getDayEntries(d)).flat());
+      const getDayBurned  = (d) => (data.burned || {})[d] || 0;
 
       const weekDates  = getWeekDates(currentDate);
       const weekTotals = weekDates.reduce((a,d) => { const t=getDayTotals(d); return { calories:a.calories+t.calories, protein:a.protein+t.protein, carbs:a.carbs+t.carbs, fat:a.fat+t.fat }; }, {calories:0,protein:0,carbs:0,fat:0});
+      const weekBurnedBonus = weekDates.reduce((sum, d) => sum + Math.round(getDayBurned(d) * 0.5), 0);
 
       const addFood = (meal, food) => {
         setData(prev => {
@@ -1396,6 +1508,15 @@
 
       const updateWeightUnit = (unit) => {
         setData(prev => ({ ...prev, weightUnit: unit }));
+      };
+
+      const updateBurned = (date, val) => {
+        setData(prev => {
+          const burned = { ...(prev.burned || {}) };
+          if (!val || val <= 0) delete burned[date];
+          else burned[date] = val;
+          return { ...prev, burned };
+        });
       };
 
       const [toast, setToast] = useState(null);
@@ -1450,8 +1571,8 @@
           />
           <main className="main">
             {view==='day'
-              ? <DayView entries={getDayEntries(currentDate)} totals={getDayTotals(currentDate)} goals={data.goals} onAddFood={m=>setAddModal({meal:m})} onRemoveFood={removeFood} />
-              : <WeekView weekDates={weekDates} getDayTotals={getDayTotals} weekTotals={weekTotals} goals={data.goals} currentDate={currentDate} onSelectDate={d=>{setCurrentDate(d);setView('day');}} weights={data.weights||{}} weightUnit={data.weightUnit||'lbs'} onUpdateWeight={updateWeight} onUpdateWeightUnit={updateWeightUnit} />
+              ? <DayView entries={getDayEntries(currentDate)} totals={getDayTotals(currentDate)} goals={data.goals} burned={getDayBurned(currentDate)} onUpdateBurned={val=>updateBurned(currentDate,val)} onAddFood={m=>setAddModal({meal:m})} onRemoveFood={removeFood} />
+              : <WeekView weekDates={weekDates} getDayTotals={getDayTotals} weekTotals={weekTotals} goals={data.goals} currentDate={currentDate} onSelectDate={d=>{setCurrentDate(d);setView('day');}} weights={data.weights||{}} weightUnit={data.weightUnit||'lbs'} onUpdateWeight={updateWeight} onUpdateWeightUnit={updateWeightUnit} getDayBurned={getDayBurned} weekBurnedBonus={weekBurnedBonus} />
             }
           </main>
           {addModal && <AddFoodModal meal={addModal.meal} onAdd={food=>addFood(addModal.meal,food)} onClose={()=>setAddModal(null)} customFoods={data.customFoods || []} onDeleteCustomFood={deleteCustomFood} />}
