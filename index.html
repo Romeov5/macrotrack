@@ -927,12 +927,26 @@
         setScanState('scanning');
         let settled = false;
 
-        const qr = new Html5Qrcode('barcode-reader');
+        // Explicitly list 1D barcode formats — food packaging uses EAN-13 / UPC-A
+        const formats = [
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.QR_CODE,
+        ];
+        const qr = new Html5Qrcode('barcode-reader', { formatsToSupport: formats });
         scannerRef.current = qr;
 
         qr.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 260, height: 110 } },
+          {
+            fps: 15,
+            // Adaptive qrbox — scales to actual camera dimensions on any phone
+            qrbox: (w, h) => ({ width: Math.floor(w * 0.9), height: Math.floor(h * 0.4) }),
+          },
           async (barcode) => {
             if (settled) return;
             settled = true;
