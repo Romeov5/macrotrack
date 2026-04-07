@@ -7,6 +7,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -393,6 +394,30 @@
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button { opacity: 0.4; }
+
+    /* ── Barcode Scanner ── */
+    .scan-section { padding: 12px 20px; border-bottom: 1px solid var(--border); }
+    .btn-scan {
+      width: 100%; padding: 11px; background: var(--surface2);
+      border: 1px dashed var(--border2); border-radius: var(--r-sm);
+      color: var(--accent); font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+    }
+    .btn-scan:hover { background: rgba(99,102,241,0.1); border-color: var(--accent); border-style: solid; }
+    .scanner-body { display: flex; flex-direction: column; }
+    .barcode-reader-div { width: 100%; background: #000; min-height: 240px; }
+    /* Override html5-qrcode defaults to hide its built-in UI chrome */
+    #barcode-reader { border: none !important; }
+    #barcode-reader__scan_region { background: transparent !important; }
+    #barcode-reader__scan_region img { display: none !important; }
+    #barcode-reader__dashboard { display: none !important; }
+    #barcode-reader video { width: 100% !important; object-fit: cover; }
+    .scanner-status { padding: 12px 20px 4px; text-align: center; min-height: 38px; }
+    .scan-hint    { font-size: 0.82rem; color: var(--text-2); }
+    .scan-loading { font-size: 0.88rem; color: var(--calories); font-weight: 600; }
+    .scan-notfound, .scan-error { font-size: 0.88rem; color: var(--danger); font-weight: 600; }
+    .scan-camerror { font-size: 0.82rem; color: var(--danger); }
   </style>
 </head>
 <body>
@@ -889,182 +914,242 @@
         name:'', servingUnit:'grams', servingAmount:'100', quantity:'100',
         calories:'', protein:'', carbs:'', fat:'',
       });
-      const [errors, setErrors] = useState({});
-      const [search, setSearch] = useState('');
+      const [errors, setErrors]   = useState({});
+      const [search, setSearch]   = useState('');
+      const [scanMode, setScanMode] = useState(false);
+      const [scanState, setScanState] = useState('idle'); // idle | scanning | loading | notfound | error | camerror
+      const scannerRef = React.useRef(null);
       const { label, emoji } = MEAL_META[meal];
 
-      const set = (k,v) => { setForm(f=>({...f,[k]:v})); setErrors(e=>({...e,[k]:undefined})); };
+      // ── Scanner lifecycle ──────────────────────────────
+      useEffect(() => {
+        if (!scanMode) return;
+        setScanState('scanning');
+        let settled = false;
 
-      const setUnit = (unit) => {
-        const def = unit === 'grams' ? '100' : '1';
-        setForm(f => ({ ...f, servingUnit:unit, servingAmount:def, quantity:def }));
-      };
+        const qr = new Html5Qrcode('barcode-reader');
+        scannerRef.current = qr;
 
-      const unitLabel = form.servingUnit === 'grams' ? 'g' : form.servingUnit === 'oz' ? 'oz' : 'srv';
+        qr.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 260, height: 110 } },
+          async (barcode) => {
+            if (settled) return;
+            settled = true;
+            try { await qr.stop(); } catch {}
+            scannerRef.current = null;
+            setScanState('loading');
 
-      const mult = (Number(form.quantity) > 0 && Number(form.servingAmount) > 0)
-        ? Number(form.quantity) / Number(form.servingAmount) : 0;
+            try {
+              const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`);
+              const json = await res.json();
+              if (json.status === 1 && json.product) {
+                const p  = json.product;
+                const n  = p.nutriments || {};
+                const r1 = v => String(Math.round((Number(v) || 0) * 10) / 10);
+                setForm({
+                  name:          ((p.product_name || p.product_name_en || p.generic_name || '').trim()) || 'Scanned Product',
+                  servingUnit:   'grams',
+                  servingAmount: '100',
+                  quantity:      String(parseFloat(p.serving_quantity) || 100),
+                  calories:      String(Math.round(n['energy-kcal_100g'] || n['energy-kcal'] || 0)),
+                  protein:       r1(n['proteins_100g']      || n.proteins      || 0),
+                  carbs:         r1(n['carbohydrates_100g'] || n.carbohydrates || 0),
+                  fat:           r1(n['fat_100g']           || n.fat           || 0),
+                });
+                setErrors({});
+                setScanMode(false);
+              } else {
+                setScanState('notfound');
+                setTimeout(() => setScanMode(false), 2500);
+              }
+            } catch {
+              setScanState('error');
+              setTimeout(() => setScanMode(false), 2500);
+            }
+          },
+          () => {}
+        ).catch(() => setScanState('camerror'));
+
+        return () => {
+          settled = true;
+          if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); scannerRef.current = null; }
+        };
+      }, [scanMode]);
+
+      // Stop scanner if modal unmounts while scanning
+      useEffect(() => () => {
+        if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); }
+      }, []);
+
+      // ── Form helpers ───────────────────────────────────
+      const set     = (k,v) => { setForm(f=>({...f,[k]:v})); setErrors(e=>({...e,[k]:undefined})); };
+      const setUnit = (unit) => { const d=unit==='grams'?'100':'1'; setForm(f=>({...f,servingUnit:unit,servingAmount:d,quantity:d})); };
+      const unitLabel = form.servingUnit==='grams'?'g':form.servingUnit==='oz'?'oz':'srv';
+      const mult = (Number(form.quantity)>0 && Number(form.servingAmount)>0) ? Number(form.quantity)/Number(form.servingAmount) : 0;
+      const round1 = n => Math.round(n*10)/10;
 
       const validate = () => {
         const e = {};
         if (!form.name.trim()) e.name = 'Required';
-        if (!Number(form.servingAmount) || Number(form.servingAmount) <= 0) e.servingAmount = 'Must be > 0';
-        if (!Number(form.quantity)      || Number(form.quantity)      <= 0) e.quantity      = 'Must be > 0';
-        if (form.calories==='' || isNaN(Number(form.calories)) || Number(form.calories)<0) e.calories = 'Required';
-        ['protein','carbs','fat'].forEach(k => { if(form[k]!=='' && (isNaN(Number(form[k]))||Number(form[k])<0)) e[k]='Invalid'; });
+        if (!Number(form.servingAmount)||Number(form.servingAmount)<=0) e.servingAmount='Must be > 0';
+        if (!Number(form.quantity)||Number(form.quantity)<=0) e.quantity='Must be > 0';
+        if (form.calories===''||isNaN(Number(form.calories))||Number(form.calories)<0) e.calories='Required';
+        ['protein','carbs','fat'].forEach(k=>{ if(form[k]!==''&&(isNaN(Number(form[k]))||Number(form[k])<0)) e[k]='Invalid'; });
         return e;
       };
-
-      const round1 = (n) => Math.round(n * 10) / 10;
 
       const submit = (ev) => {
         ev.preventDefault();
         const e = validate();
         if (Object.keys(e).length) { setErrors(e); return; }
         onAdd({
-          name: form.name.trim(),
-          servingUnit: form.servingUnit,
-          servingAmount: Number(form.servingAmount),
-          quantity: Number(form.quantity),
-          // per-serving reference (stored for My Foods recall)
-          caloriesPerServing: Number(form.calories) || 0,
-          proteinPerServing:  Number(form.protein)  || 0,
-          carbsPerServing:    Number(form.carbs)    || 0,
-          fatPerServing:      Number(form.fat)      || 0,
-          // actual logged values scaled by quantity
-          calories: round1((Number(form.calories)||0) * mult),
-          protein:  round1((Number(form.protein) ||0) * mult),
-          carbs:    round1((Number(form.carbs)   ||0) * mult),
-          fat:      round1((Number(form.fat)     ||0) * mult),
+          name:form.name.trim(), servingUnit:form.servingUnit,
+          servingAmount:Number(form.servingAmount), quantity:Number(form.quantity),
+          caloriesPerServing:Number(form.calories)||0, proteinPerServing:Number(form.protein)||0,
+          carbsPerServing:Number(form.carbs)||0, fatPerServing:Number(form.fat)||0,
+          calories:round1((Number(form.calories)||0)*mult), protein:round1((Number(form.protein)||0)*mult),
+          carbs:round1((Number(form.carbs)||0)*mult), fat:round1((Number(form.fat)||0)*mult),
         });
       };
 
       const fill = (f) => {
-        const unit = f.servingUnit || 'servings';
-        const amt  = String(f.servingAmount ?? 1);
-        setForm({
-          name: f.name,
-          servingUnit: unit,
-          servingAmount: amt,
-          quantity: amt,
-          calories: String(f.calories ?? f.caloriesPerServing ?? ''),
-          protein:  String(f.protein  ?? f.proteinPerServing  ?? ''),
-          carbs:    String(f.carbs    ?? f.carbsPerServing    ?? ''),
-          fat:      String(f.fat      ?? f.fatPerServing      ?? ''),
-        });
+        const unit=f.servingUnit||'servings', amt=String(f.servingAmount??1);
+        setForm({ name:f.name, servingUnit:unit, servingAmount:amt, quantity:amt,
+          calories:String(f.calories??f.caloriesPerServing??''), protein:String(f.protein??f.proteinPerServing??''),
+          carbs:String(f.carbs??f.carbsPerServing??''), fat:String(f.fat??f.fatPerServing??'') });
         setErrors({});
       };
 
-      const filteredCustom = customFoods.filter(f =>
-        f.name.toLowerCase().includes(search.toLowerCase())
-      );
-
-      const showPreview = mult > 0 && Number(form.calories) > 0;
+      const filteredCustom = customFoods.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
+      const showPreview = mult>0 && Number(form.calories)>0;
 
       return (
-        <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && onClose()}>
+        <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && !scanMode && onClose()}>
           <div className="modal">
             <div className="modal-header">
-              <div className="modal-title"><span>{emoji}</span> Add to {label}</div>
-              <button className="modal-close" onClick={onClose}>×</button>
+              <div className="modal-title">
+                {scanMode ? '📷 Scan Barcode' : <><span>{emoji}</span> Add to {label}</>}
+              </div>
+              <button className="modal-close" onClick={scanMode ? () => setScanMode(false) : onClose}>×</button>
             </div>
 
-            {customFoods.length > 0 && (
-              <div className="my-foods">
-                <div className="my-foods-header">
-                  <div className="quick-label">My Foods</div>
-                  <input className="my-foods-search" placeholder="Search..." value={search} onChange={e=>setSearch(e.target.value)} />
+            {/* ── Scanner view ── */}
+            {scanMode ? (
+              <div className="scanner-body">
+                <div id="barcode-reader" className="barcode-reader-div" />
+                <div className="scanner-status">
+                  {scanState==='scanning'  && <span className="scan-hint">Point camera at the barcode on the product</span>}
+                  {scanState==='loading'   && <span className="scan-loading">⏳ Looking up product…</span>}
+                  {scanState==='notfound'  && <span className="scan-notfound">Product not found — try entering manually</span>}
+                  {scanState==='error'     && <span className="scan-error">Network error — check connection and retry</span>}
+                  {scanState==='camerror'  && <span className="scan-camerror">Camera access denied — enable it in browser settings</span>}
                 </div>
-                <div className="quick-grid">
-                  {filteredCustom.length === 0
-                    ? <span className="my-foods-empty">No matches</span>
-                    : filteredCustom.map(f => (
-                        <div key={f.id} className="my-food-chip">
-                          <button className="my-food-fill" onClick={() => fill(f)}>{f.name}</button>
-                          <button className="my-food-del" onClick={() => onDeleteCustomFood(f.id)} title="Remove from My Foods">×</button>
-                        </div>
-                      ))
-                  }
+                <div style={{padding:'4px 16px 16px'}}>
+                  <button className="btn-secondary" style={{width:'100%'}} onClick={() => setScanMode(false)}>Cancel</button>
                 </div>
               </div>
+            ) : (
+              <>
+                {/* ── Scan button ── */}
+                <div className="scan-section">
+                  <button type="button" className="btn-scan" onClick={() => setScanMode(true)}>
+                    📷 Scan Product Barcode
+                  </button>
+                </div>
+
+                {/* ── My Foods ── */}
+                {customFoods.length > 0 && (
+                  <div className="my-foods">
+                    <div className="my-foods-header">
+                      <div className="quick-label">My Foods</div>
+                      <input className="my-foods-search" placeholder="Search..." value={search} onChange={e=>setSearch(e.target.value)} />
+                    </div>
+                    <div className="quick-grid">
+                      {filteredCustom.length===0
+                        ? <span className="my-foods-empty">No matches</span>
+                        : filteredCustom.map(f=>(
+                            <div key={f.id} className="my-food-chip">
+                              <button className="my-food-fill" onClick={()=>fill(f)}>{f.name}</button>
+                              <button className="my-food-del" onClick={()=>onDeleteCustomFood(f.id)} title="Remove">×</button>
+                            </div>
+                          ))
+                      }
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Quick Add ── */}
+                <div className="quick-foods">
+                  <div className="quick-label">Quick Add</div>
+                  <div className="quick-grid">
+                    {QUICK_FOODS.map(f=><button key={f.name} className="quick-chip" onClick={()=>fill(f)}>{f.name}</button>)}
+                  </div>
+                </div>
+
+                {/* ── Manual form ── */}
+                <form className="modal-form" onSubmit={submit}>
+                  <div className={`form-group full ${errors.name?'has-error':''}`}>
+                    <label>Food Name</label>
+                    <input type="text" placeholder="e.g. Grilled chicken" value={form.name} onChange={e=>set('name',e.target.value)} autoFocus />
+                    {errors.name && <span className="form-error">{errors.name}</span>}
+                  </div>
+                  <div className="form-group full">
+                    <label>Serving Unit</label>
+                    <div className="unit-toggle">
+                      {['grams','oz','servings'].map(u=>(
+                        <button key={u} type="button" className={`unit-btn ${form.servingUnit===u?'active':''}`} onClick={()=>setUnit(u)}>
+                          {u==='grams'?'Grams':u==='oz'?'Ounces':'Servings'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className={`form-group ${errors.servingAmount?'has-error':''}`}>
+                    <label>Per (reference) <span className="unit-tag">{unitLabel}</span></label>
+                    <input type="number" min="0.01" step="any" value={form.servingAmount} onChange={e=>set('servingAmount',e.target.value)} />
+                    {errors.servingAmount && <span className="form-error">{errors.servingAmount}</span>}
+                  </div>
+                  <div className={`form-group ${errors.quantity?'has-error':''}`}>
+                    <label>Amount consumed <span className="unit-tag">{unitLabel}</span></label>
+                    <input type="number" min="0.01" step="any" value={form.quantity} onChange={e=>set('quantity',e.target.value)} />
+                    {errors.quantity && <span className="form-error">{errors.quantity}</span>}
+                  </div>
+                  <div className={`form-group ${errors.calories?'has-error':''}`}>
+                    <label>Calories per {form.servingAmount}{unitLabel}</label>
+                    <input type="number" min="0" step="1" placeholder="0" value={form.calories} onChange={e=>set('calories',e.target.value)} />
+                    {errors.calories && <span className="form-error">{errors.calories}</span>}
+                  </div>
+                  <div className={`form-group ${errors.protein?'has-error':''}`}>
+                    <label><span style={{color:'var(--protein)'}}>Protein</span> per {form.servingAmount}{unitLabel} (g)</label>
+                    <input type="number" min="0" step="0.1" placeholder="0" value={form.protein} onChange={e=>set('protein',e.target.value)} />
+                    {errors.protein && <span className="form-error">{errors.protein}</span>}
+                  </div>
+                  <div className={`form-group ${errors.carbs?'has-error':''}`}>
+                    <label><span style={{color:'var(--carbs)'}}>Carbs</span> per {form.servingAmount}{unitLabel} (g)</label>
+                    <input type="number" min="0" step="0.1" placeholder="0" value={form.carbs} onChange={e=>set('carbs',e.target.value)} />
+                    {errors.carbs && <span className="form-error">{errors.carbs}</span>}
+                  </div>
+                  <div className={`form-group ${errors.fat?'has-error':''}`}>
+                    <label><span style={{color:'var(--fat)'}}>Fat</span> per {form.servingAmount}{unitLabel} (g)</label>
+                    <input type="number" min="0" step="0.1" placeholder="0" value={form.fat} onChange={e=>set('fat',e.target.value)} />
+                    {errors.fat && <span className="form-error">{errors.fat}</span>}
+                  </div>
+                  {showPreview && (
+                    <div className="calc-preview">
+                      <span className="calc-preview-label">Will log</span>
+                      <strong>{Math.round((Number(form.calories)||0)*mult)} kcal</strong>
+                      <span style={{color:'var(--protein)'}}>P {round1((Number(form.protein)||0)*mult)}g</span>
+                      <span style={{color:'var(--carbs)'}}>C {round1((Number(form.carbs)||0)*mult)}g</span>
+                      <span style={{color:'var(--fat)'}}>F {round1((Number(form.fat)||0)*mult)}g</span>
+                    </div>
+                  )}
+                  <div className="modal-footer">
+                    <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
+                    <button type="submit" className="btn-primary">Add Food</button>
+                  </div>
+                </form>
+              </>
             )}
-
-            <div className="quick-foods">
-              <div className="quick-label">Quick Add</div>
-              <div className="quick-grid">
-                {QUICK_FOODS.map(f => <button key={f.name} className="quick-chip" onClick={() => fill(f)}>{f.name}</button>)}
-              </div>
-            </div>
-
-            <form className="modal-form" onSubmit={submit}>
-              <div className={`form-group full ${errors.name?'has-error':''}`}>
-                <label>Food Name</label>
-                <input type="text" placeholder="e.g. Grilled chicken" value={form.name} onChange={e=>set('name',e.target.value)} autoFocus />
-                {errors.name && <span className="form-error">{errors.name}</span>}
-              </div>
-
-              <div className="form-group full">
-                <label>Serving Unit</label>
-                <div className="unit-toggle">
-                  {['grams','oz','servings'].map(u => (
-                    <button key={u} type="button" className={`unit-btn ${form.servingUnit===u?'active':''}`} onClick={() => setUnit(u)}>
-                      {u === 'grams' ? 'Grams' : u === 'oz' ? 'Ounces' : 'Servings'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className={`form-group ${errors.servingAmount?'has-error':''}`}>
-                <label>Per (reference) <span className="unit-tag">{unitLabel}</span></label>
-                <input type="number" min="0.01" step="any" value={form.servingAmount} onChange={e=>set('servingAmount',e.target.value)} />
-                {errors.servingAmount && <span className="form-error">{errors.servingAmount}</span>}
-              </div>
-
-              <div className={`form-group ${errors.quantity?'has-error':''}`}>
-                <label>Amount consumed <span className="unit-tag">{unitLabel}</span></label>
-                <input type="number" min="0.01" step="any" value={form.quantity} onChange={e=>set('quantity',e.target.value)} />
-                {errors.quantity && <span className="form-error">{errors.quantity}</span>}
-              </div>
-
-              <div className={`form-group ${errors.calories?'has-error':''}`}>
-                <label>Calories per {form.servingAmount}{unitLabel}</label>
-                <input type="number" min="0" step="1" placeholder="0" value={form.calories} onChange={e=>set('calories',e.target.value)} />
-                {errors.calories && <span className="form-error">{errors.calories}</span>}
-              </div>
-
-              <div className={`form-group ${errors.protein?'has-error':''}`}>
-                <label><span style={{color:'var(--protein)'}}>Protein</span> per {form.servingAmount}{unitLabel} (g)</label>
-                <input type="number" min="0" step="0.1" placeholder="0" value={form.protein} onChange={e=>set('protein',e.target.value)} />
-                {errors.protein && <span className="form-error">{errors.protein}</span>}
-              </div>
-
-              <div className={`form-group ${errors.carbs?'has-error':''}`}>
-                <label><span style={{color:'var(--carbs)'}}>Carbs</span> per {form.servingAmount}{unitLabel} (g)</label>
-                <input type="number" min="0" step="0.1" placeholder="0" value={form.carbs} onChange={e=>set('carbs',e.target.value)} />
-                {errors.carbs && <span className="form-error">{errors.carbs}</span>}
-              </div>
-
-              <div className={`form-group ${errors.fat?'has-error':''}`}>
-                <label><span style={{color:'var(--fat)'}}>Fat</span> per {form.servingAmount}{unitLabel} (g)</label>
-                <input type="number" min="0" step="0.1" placeholder="0" value={form.fat} onChange={e=>set('fat',e.target.value)} />
-                {errors.fat && <span className="form-error">{errors.fat}</span>}
-              </div>
-
-              {showPreview && (
-                <div className="calc-preview">
-                  <span className="calc-preview-label">Will log</span>
-                  <strong>{Math.round((Number(form.calories)||0) * mult)} kcal</strong>
-                  <span style={{color:'var(--protein)'}}>P {round1((Number(form.protein)||0)*mult)}g</span>
-                  <span style={{color:'var(--carbs)'}}>C {round1((Number(form.carbs)||0)*mult)}g</span>
-                  <span style={{color:'var(--fat)'}}>F {round1((Number(form.fat)||0)*mult)}g</span>
-                </div>
-              )}
-
-              <div className="modal-footer">
-                <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-                <button type="submit" className="btn-primary">Add Food</button>
-              </div>
-            </form>
           </div>
         </div>
       );
