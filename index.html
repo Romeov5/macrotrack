@@ -50,6 +50,7 @@
     .brand { display: flex; align-items: center; gap: 8px; }
     .brand-icon { font-size: 1.3rem; }
     .brand-name { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
+    .header-actions { display: flex; align-items: center; gap: 8px; }
     .btn-goals {
       display: flex; align-items: center; gap: 6px; padding: 7px 14px;
       background: var(--surface3); border: 1px solid var(--border2);
@@ -57,6 +58,22 @@
       cursor: pointer; transition: all 0.15s; font-family: inherit;
     }
     .btn-goals:hover { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+    .btn-data {
+      display: flex; align-items: center; gap: 5px; padding: 7px 12px;
+      background: var(--surface3); border: 1px solid var(--border);
+      border-radius: var(--r-sm); color: var(--text-2); font-size: 0.82rem;
+      cursor: pointer; transition: all 0.15s; font-family: inherit; white-space: nowrap;
+    }
+    .btn-data:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
+    .btn-data.restore:hover { border-color: var(--calories); color: var(--calories); }
+    .import-toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--surface3); border: 1px solid var(--carbs); color: var(--carbs);
+      padding: 10px 20px; border-radius: var(--r); font-size: 0.88rem; font-weight: 600;
+      z-index: 999; animation: slide-up 0.2s ease;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .import-toast.error { border-color: var(--danger); color: var(--danger); }
     .header-nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
     .view-toggle {
       display: flex; background: var(--surface3); border-radius: var(--r-sm);
@@ -1132,7 +1149,7 @@
     }
 
     // ── Header ─────────────────────────────────────────
-    function Header({ currentDate, weekDates, view, onViewChange, onNavigateDay, onNavigateWeek, onToday, onOpenGoals }) {
+    function Header({ currentDate, weekDates, view, onViewChange, onNavigateDay, onNavigateWeek, onToday, onOpenGoals, onExport, onImport }) {
       const isDay = view === 'day';
       return (
         <header className="header">
@@ -1141,7 +1158,11 @@
               <span className="brand-icon">⚡</span>
               <span className="brand-name">MacroTrack</span>
             </div>
-            <button className="btn-goals" onClick={onOpenGoals}>🎯 Set Goals</button>
+            <div className="header-actions">
+              <button className="btn-data" onClick={onExport} title="Download a backup of all your data">⬇ Backup</button>
+              <button className="btn-data restore" onClick={onImport} title="Restore from a backup file">⬆ Restore</button>
+              <button className="btn-goals" onClick={onOpenGoals}>🎯 Set Goals</button>
+            </div>
           </div>
           <div className="header-nav">
             <div className="view-toggle">
@@ -1227,8 +1248,46 @@
         setData(prev => ({ ...prev, weightUnit: unit }));
       };
 
+      const [toast, setToast] = useState(null);
+      const showToast = (msg, error = false) => {
+        setToast({ msg, error });
+        setTimeout(() => setToast(null), 3000);
+      };
+
+      const importRef = React.useRef(null);
+
+      const exportData = () => {
+        const json = JSON.stringify(data, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = `macrotrack-backup-${fmtDate(new Date())}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+
+      const handleImportFile = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+          try {
+            const imported = JSON.parse(ev.target.result);
+            if (!imported.goals || !imported.entries) throw new Error('Invalid file');
+            setData(imported);
+            showToast('✓ Data restored successfully');
+          } catch {
+            showToast('Could not read file — make sure it is a MacroTrack backup', true);
+          }
+          e.target.value = '';
+        };
+        reader.readAsText(file);
+      };
+
       return (
         <div className="app">
+          <input ref={importRef} type="file" accept=".json" style={{display:'none'}} onChange={handleImportFile} />
           <Header
             currentDate={currentDate} weekDates={weekDates} view={view}
             onViewChange={setView}
@@ -1236,6 +1295,8 @@
             onNavigateWeek={n => setCurrentDate(d => addDays(d,n*7))}
             onToday={() => setCurrentDate(fmtDate(new Date()))}
             onOpenGoals={() => setGoalsOpen(true)}
+            onExport={exportData}
+            onImport={() => importRef.current.click()}
           />
           <main className="main">
             {view==='day'
@@ -1245,6 +1306,7 @@
           </main>
           {addModal && <AddFoodModal meal={addModal.meal} onAdd={food=>addFood(addModal.meal,food)} onClose={()=>setAddModal(null)} customFoods={data.customFoods || []} onDeleteCustomFood={deleteCustomFood} />}
           {goalsOpen && <GoalsModal goals={data.goals} onSave={g=>{setData(p=>({...p,goals:g}));setGoalsOpen(false);}} onClose={()=>setGoalsOpen(false)} />}
+          {toast && <div className={`import-toast ${toast.error ? 'error' : ''}`}>{toast.msg}</div>}
         </div>
       );
     }
