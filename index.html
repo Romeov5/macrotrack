@@ -7,7 +7,7 @@
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/lib/quagga.min.js"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -430,11 +430,13 @@
     }
     .btn-scan:hover { background: rgba(99,102,241,0.1); border-color: var(--accent); border-style: solid; }
     .scanner-body { display: flex; flex-direction: column; }
-    .barcode-reader-div { width: 100%; background: #000; min-height: 240px; }
-    /* Quagga2 viewport styling */
-    #barcode-reader { position: relative; overflow: hidden; }
-    #barcode-reader video { width: 100% !important; height: 100% !important; object-fit: cover; display: block; }
-    #barcode-reader canvas.drawingBuffer { position: absolute; top: 0; left: 0; width: 100% !important; height: 100% !important; }
+    .barcode-reader-div { width: 100%; height: 280px; background: #000; position: relative; overflow: hidden; }
+    /* html5-qrcode overrides — hide its built-in UI chrome */
+    #barcode-reader { border: none !important; }
+    #barcode-reader__scan_region { background: transparent !important; }
+    #barcode-reader__scan_region img { display: none !important; }
+    #barcode-reader__dashboard { display: none !important; }
+    #barcode-reader video { width: 100% !important; object-fit: cover; }
     .scanner-status { padding: 12px 20px 4px; text-align: center; min-height: 38px; }
     .scan-hint    { font-size: 0.82rem; color: var(--text-2); }
     .scan-loading { font-size: 0.88rem; color: var(--calories); font-weight: 600; }
@@ -996,27 +998,35 @@
       const scannerRef = React.useRef(null);
       const { label, emoji } = MEAL_META[meal];
 
-      // ── Scanner lifecycle (Quagga2) ────────────────────
+      // ── Scanner lifecycle (html5-qrcode) ──────────────
       useEffect(() => {
         if (!scanMode) return;
         setScanState('scanning');
 
         let active = true;
-        let lastCode = null;
-        let streak = 0;
+        const qr = new Html5Qrcode('barcode-reader', {
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODE_128,
+          ],
+          verbose: false,
+        });
+        scannerRef.current = qr;
 
-        const onDetected = async (result) => {
+        let lastCode = null, streak = 0;
+
+        const onSuccess = async (barcode) => {
           if (!active) return;
-          const code = result && result.codeResult && result.codeResult.code;
-          if (!code) return;
-
-          // Require 3 consecutive reads of the same code to reduce false positives
-          if (code === lastCode) { streak++; } else { lastCode = code; streak = 1; }
+          // Require 3 reads of the same code to prevent false positives
+          if (barcode === lastCode) { streak++; } else { lastCode = barcode; streak = 1; }
           if (streak < 3) return;
 
           active = false;
-          Quagga.offDetected(onDetected);
-          try { Quagga.stop(); } catch {}
+          try { await qr.stop(); } catch {}
+          scannerRef.current = null;
           setScanState('loading');
 
           try {
@@ -1115,46 +1125,25 @@
           }
         };
 
-        Quagga.init({
-          inputStream: {
-            type: 'LiveStream',
-            target: document.getElementById('barcode-reader'),
-            constraints: {
-              facingMode: 'environment',
-              width:  { ideal: 1280 },
-              height: { ideal: 720 },
-            },
+        qr.start(
+          { facingMode: 'environment' },
+          {
+            fps: 15,
+            qrbox: (w, h) => ({ width: Math.floor(w * 0.9), height: Math.floor(h * 0.45) }),
           },
-          locator:      { patchSize: 'medium', halfSample: true },
-          numOfWorkers: navigator.hardwareConcurrency ? Math.min(navigator.hardwareConcurrency, 4) : 2,
-          decoder: {
-            readers: [
-              'ean_reader',       // EAN-13 (most grocery barcodes worldwide)
-              'ean_8_reader',     // EAN-8
-              'upc_reader',       // UPC-A (North America)
-              'upc_e_reader',     // UPC-E (compressed UPC)
-              'code_128_reader',  // Code 128 (some supplements/specialty)
-            ],
-            multiple: false,
-          },
-          locate: true,
-        }, (err) => {
-          if (!active) return;
-          if (err) { setScanState('camerror'); return; }
-          Quagga.start();
-          Quagga.onDetected(onDetected);
-        });
+          onSuccess,
+          () => {} // ignore per-frame errors
+        ).catch(() => { if (active) setScanState('camerror'); });
 
         return () => {
           active = false;
-          Quagga.offDetected(onDetected);
-          try { Quagga.stop(); } catch {}
+          if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); scannerRef.current = null; }
         };
       }, [scanMode]);
 
       // Stop scanner if modal unmounts while scanning
       useEffect(() => () => {
-        try { Quagga.stop(); } catch {}
+        if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); scannerRef.current = null; }
       }, []);
 
       // ── Form helpers ───────────────────────────────────
