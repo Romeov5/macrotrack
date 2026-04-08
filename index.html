@@ -322,7 +322,26 @@
       line-height: 1; font-family: inherit;
     }
     .modal-close:hover { color: var(--text); border-color: var(--border2); }
-    .quick-foods { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+    .food-search-wrap { padding: 12px 20px; border-bottom: 1px solid var(--border); position: relative; }
+    .food-search-input {
+      width: 100%; padding: 9px 14px; background: var(--surface2);
+      border: 1px solid var(--border2); border-radius: var(--r-sm);
+      color: var(--text); font-size: 0.92rem; outline: none;
+    }
+    .food-search-input:focus { border-color: var(--accent); }
+    .food-search-results { padding: 6px 20px 12px; border-bottom: 1px solid var(--border); max-height: 220px; overflow-y: auto; }
+    .food-search-hint { font-size: 0.78rem; color: var(--text-3); padding: 6px 0; }
+    .food-result-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 12px; border-radius: var(--r-sm); cursor: pointer;
+      border: 1px solid transparent; margin-bottom: 4px;
+      background: var(--surface2); transition: border-color 0.15s;
+    }
+    .food-result-item:hover { border-color: var(--accent); background: var(--surface3); }
+    .food-result-name { font-size: 0.88rem; font-weight: 500; }
+    .food-result-meta { font-size: 0.75rem; color: var(--text-2); margin-top: 2px; }
+    .food-result-cal { font-size: 0.82rem; font-weight: 600; color: var(--calories); flex-shrink: 0; margin-left: 10px; }
+
     .quick-label { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
     .quick-grid { display: flex; flex-wrap: wrap; gap: 6px; }
     .quick-chip {
@@ -477,20 +496,6 @@
       { key:'lunch',     label:'Lunch',     emoji:'☀️' },
       { key:'dinner',    label:'Dinner',    emoji:'🌙' },
       { key:'snack',     label:'Snacks',    emoji:'🍎' },
-    ];
-    const QUICK_FOODS = [
-      { name:'Chicken Breast', calories:165, protein:31,  carbs:0,  fat:3.6,  servingUnit:'grams',    servingAmount:100 },
-      { name:'Brown Rice',     calories:216, protein:4.5, carbs:45, fat:1.8,  servingUnit:'grams',    servingAmount:100 },
-      { name:'Whole Egg',      calories:78,  protein:6,   carbs:0.6,fat:5,    servingUnit:'servings', servingAmount:1   },
-      { name:'Banana',         calories:105, protein:1.3, carbs:27, fat:0.4,  servingUnit:'servings', servingAmount:1   },
-      { name:'Greek Yogurt',   calories:59,  protein:10,  carbs:3.6,fat:0.4,  servingUnit:'grams',    servingAmount:100 },
-      { name:'Almonds',        calories:174, protein:6,   carbs:6,  fat:15,   servingUnit:'grams',    servingAmount:30  },
-      { name:'Oatmeal',        calories:389, protein:17,  carbs:66, fat:7,    servingUnit:'grams',    servingAmount:100 },
-      { name:'Salmon',         calories:208, protein:20,  carbs:0,  fat:13,   servingUnit:'grams',    servingAmount:100 },
-      { name:'White Rice',     calories:130, protein:2.7, carbs:28, fat:0.3,  servingUnit:'grams',    servingAmount:100 },
-      { name:'Broccoli',       calories:34,  protein:2.8, carbs:7,  fat:0.4,  servingUnit:'grams',    servingAmount:100 },
-      { name:'Sweet Potato',   calories:86,  protein:1.6, carbs:20, fat:0.1,  servingUnit:'grams',    servingAmount:100 },
-      { name:'Avocado',        calories:120, protein:1.5, carbs:6,  fat:11,   servingUnit:'servings', servingAmount:0.5 },
     ];
 
     const emptyDay = () => ({ breakfast:[], lunch:[], dinner:[], snack:[] });
@@ -991,8 +996,11 @@
         name:'', servingUnit:'grams', servingAmount:'100', quantity:'100',
         calories:'', protein:'', carbs:'', fat:'',
       });
-      const [errors, setErrors]   = useState({});
-      const [search, setSearch]   = useState('');
+      const [errors, setErrors]     = useState({});
+      const [search, setSearch]     = useState('');
+      const [dbResults, setDbResults] = useState([]);
+      const [dbStatus, setDbStatus]   = useState('idle'); // idle | loading | done | error
+      const searchTimer = React.useRef(null);
       const [scanMode, setScanMode] = useState(false);
       const [scanState, setScanState] = useState('idle'); // idle | scanning | loading | notfound | error | camerror
       const scannerRef = React.useRef(null);
@@ -1146,6 +1154,119 @@
         if (scannerRef.current) { scannerRef.current.stop().catch(() => {}); scannerRef.current = null; }
       }, []);
 
+      // ── Food database search ───────────────────────────
+      useEffect(() => {
+        clearTimeout(searchTimer.current);
+        const q = search.trim();
+        if (q.length < 3) { setDbResults([]); setDbStatus(q.length > 0 ? 'short' : 'idle'); return; }
+        setDbStatus('loading');
+        searchTimer.current = setTimeout(async () => {
+          const r1 = v => Math.round(Number(v) * 10) / 10;
+          const OZ_TO_G = 28.3495;
+
+          // ── Helper: parse USDA response into standard items ──
+          const parseUSDA = (json) => {
+            const getNutrient = (nutrients, ids) => {
+              for (const id of ids) {
+                const n = nutrients.find(n => n.nutrientId === id);
+                if (n && n.value) return Number(n.value);
+              }
+              return 0;
+            };
+            return (json.foods || []).filter(f =>
+              getNutrient(f.foodNutrients || [], [1008]) > 0
+            ).map(f => {
+              const ns   = f.foodNutrients || [];
+              const cal  = getNutrient(ns, [1008]);
+              const pro  = getNutrient(ns, [1003]);
+              const carb = getNutrient(ns, [1005]);
+              const fat  = getNutrient(ns, [1004]);
+              const rawName = (f.description || '').trim();
+              const brand   = (f.brandOwner || f.brandName || '').trim();
+              const name    = (brand && brand.toLowerCase() !== rawName.toLowerCase()) ? `${rawName} — ${brand}` : rawName;
+              const srvG    = Number(f.servingSize) || 0;
+              const srvU    = (f.servingSizeUnit || '').toLowerCase();
+              let servingUnit = 'servings', servingAmount = '1';
+              if (srvG > 0 && (srvU === 'g' || srvU === 'ml')) { servingUnit = 'grams'; servingAmount = String(srvG); }
+              else if (srvG > 0 && srvU === 'oz') { servingUnit = 'oz'; servingAmount = String(srvG); }
+              return { name, servingUnit, servingAmount, quantity: servingAmount, calories: String(Math.round(cal)), protein: String(r1(pro)), carbs: String(r1(carb)), fat: String(r1(fat)), displayCal: String(Math.round(cal)) };
+            });
+          };
+
+          // ── Helper: parse Open Food Facts response into standard items ──
+          const parseOFF = (json) => {
+            return (json.products || []).filter(p => {
+              const n = p.nutriments || {};
+              return p.product_name && (n['energy-kcal_100g'] || n['energy-kcal_serving'] || n['energy-kcal']);
+            }).map(p => {
+              const n       = p.nutriments || {};
+              const rawName = (p.product_name || '').trim();
+              const brand   = (p.brands || '').split(',')[0].trim();
+              const name    = brand ? `${rawName} — ${brand}` : rawName;
+              const per100Cal  = Number(n['energy-kcal_100g'] || n['energy-kcal'] || 0);
+              const per100Pro  = Number(n['proteins_100g']     || n.proteins       || 0);
+              const per100Carb = Number(n['carbohydrates_100g']|| n.carbohydrates  || 0);
+              const per100Fat  = Number(n['fat_100g']          || n.fat            || 0);
+              const srvCal  = Number(n['energy-kcal_serving']  || 0);
+              const srvPro  = Number(n['proteins_serving']     || 0);
+              const srvCarb = Number(n['carbohydrates_serving']|| 0);
+              const srvFat  = Number(n['fat_serving']          || 0);
+              const srvQty  = parseFloat(p.serving_quantity)   || 0;
+              const srvUnit = (p.serving_quantity_unit || '').toLowerCase().trim();
+              let servingUnit = 'servings', servingAmount = '1', calories, protein, carbs, fat;
+              if (srvQty > 0 && (srvUnit === 'g' || srvUnit === 'ml' || srvUnit === '')) {
+                servingUnit = 'grams'; servingAmount = String(srvQty);
+                const sc = srvQty / 100;
+                calories = String(Math.round(srvCal || per100Cal * sc)); protein = String(r1(srvPro || per100Pro * sc)); carbs = String(r1(srvCarb || per100Carb * sc)); fat = String(r1(srvFat || per100Fat * sc));
+              } else if (srvQty > 0 && srvUnit === 'oz') {
+                servingUnit = 'oz'; servingAmount = String(srvQty);
+                const sc = (srvQty * OZ_TO_G) / 100;
+                calories = String(Math.round(srvCal || per100Cal * sc)); protein = String(r1(srvPro || per100Pro * sc)); carbs = String(r1(srvCarb || per100Carb * sc)); fat = String(r1(srvFat || per100Fat * sc));
+              } else if (srvCal > 0) {
+                calories = String(Math.round(srvCal)); protein = String(r1(srvPro)); carbs = String(r1(srvCarb)); fat = String(r1(srvFat));
+              } else {
+                servingUnit = 'grams'; servingAmount = '100';
+                calories = String(Math.round(per100Cal)); protein = String(r1(per100Pro)); carbs = String(r1(per100Carb)); fat = String(r1(per100Fat));
+              }
+              return { name, servingUnit, servingAmount, quantity: servingAmount, calories, protein, carbs, fat, displayCal: calories };
+            });
+          };
+
+          try {
+            // ── Primary: Open Food Facts (no key, no rate limit) ──
+            const offUrl  = `https://us.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&search_simple=1&action=process&json=1&page_size=15&fields=product_name,brands,serving_quantity,serving_quantity_unit,nutriments`;
+            const offRes  = await fetch(offUrl);
+            const offJson = await offRes.json();
+            const offProducts = parseOFF(offJson);
+
+            if (offProducts.length > 0) {
+              setDbResults(offProducts);
+              setDbStatus('done');
+              return;
+            }
+
+            // ── Fallback: USDA FoodData Central ──
+            const usdaUrl  = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(q)}&pageSize=15&api_key=DEMO_KEY&dataType=Branded,SR%20Legacy,Survey%20(FNDDS)`;
+            const usdaRes  = await fetch(usdaUrl);
+            const usdaJson = await usdaRes.json();
+            if (usdaJson.error) throw new Error('rate_limit');
+            const usdaProducts = parseUSDA(usdaJson);
+            setDbResults(usdaProducts);
+            setDbStatus(usdaProducts.length === 0 ? 'noresults' : 'done');
+          } catch {
+            setDbStatus('ratelimit');
+          }
+        }, 800);
+        return () => clearTimeout(searchTimer.current);
+      }, [search]);
+
+      const fillFromDb = (item) => {
+        setForm({ name: item.name, servingUnit: item.servingUnit, servingAmount: item.servingAmount, quantity: item.servingAmount, calories: item.calories, protein: item.protein, carbs: item.carbs, fat: item.fat });
+        setErrors({});
+        setSearch('');
+        setDbResults([]);
+      };
+
       // ── Form helpers ───────────────────────────────────
       const set     = (k,v) => { setForm(f=>({...f,[k]:v})); setErrors(e=>({...e,[k]:undefined})); };
       const setUnit = (unit) => { const d=unit==='grams'?'100':'1'; setForm(f=>({...f,servingUnit:unit,servingAmount:d,quantity:d})); };
@@ -1185,7 +1306,6 @@
         setErrors({});
       };
 
-      const filteredCustom = customFoods.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
       const showPreview = mult>0 && Number(form.calories)>0;
 
       return (
@@ -1222,34 +1342,56 @@
                   </button>
                 </div>
 
-                {/* ── My Foods ── */}
-                {customFoods.length > 0 && (
-                  <div className="my-foods">
-                    <div className="my-foods-header">
-                      <div className="quick-label">My Foods</div>
-                      <input className="my-foods-search" placeholder="Search..." value={search} onChange={e=>setSearch(e.target.value)} />
-                    </div>
-                    <div className="quick-grid">
-                      {filteredCustom.length===0
-                        ? <span className="my-foods-empty">No matches</span>
-                        : filteredCustom.map(f=>(
-                            <div key={f.id} className="my-food-chip">
-                              <button className="my-food-fill" onClick={()=>fill(f)}>{f.name}</button>
-                              <button className="my-food-del" onClick={()=>onDeleteCustomFood(f.id)} title="Remove">×</button>
-                            </div>
-                          ))
-                      }
-                    </div>
+                {/* ── Food database search ── */}
+                <div className="food-search-wrap">
+                  <input
+                    className="food-search-input"
+                    type="text"
+                    placeholder="🔍 Search food database…"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+
+                {/* ── Search results ── */}
+                {(dbResults.length > 0 || dbStatus === 'loading' || dbStatus === 'error' || dbStatus === 'ratelimit' || dbStatus === 'noresults' || dbStatus === 'short') && (
+                  <div className="food-search-results">
+                    {dbStatus === 'short'     && <div className="food-search-hint">Type at least 3 characters to search…</div>}
+                    {dbStatus === 'loading'   && <div className="food-search-hint">Searching…</div>}
+                    {dbStatus === 'noresults' && <div className="food-search-hint">No results found — try a different term</div>}
+                    {dbStatus === 'ratelimit' && <div className="food-search-hint">Search limit reached — try again in a minute</div>}
+                    {dbStatus === 'error'     && <div className="food-search-hint">Search unavailable — enter food manually below</div>}
+                    {dbResults.map((item, i) => (
+                      <div key={i} className="food-result-item" onClick={() => fillFromDb(item)}>
+                        <div>
+                          <div className="food-result-name">{item.name}</div>
+                          <div className="food-result-meta">
+                            P {item.protein}g · C {item.carbs}g · F {item.fat}g per {item.servingAmount}{item.servingUnit==='grams'?'g':item.servingUnit==='oz'?'oz':' srv'}
+                          </div>
+                        </div>
+                        <div className="food-result-cal">{item.displayCal} kcal</div>
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {/* ── Quick Add ── */}
-                <div className="quick-foods">
-                  <div className="quick-label">Quick Add</div>
-                  <div className="quick-grid">
-                    {QUICK_FOODS.map(f=><button key={f.name} className="quick-chip" onClick={()=>fill(f)}>{f.name}</button>)}
+                {/* ── My Foods ── */}
+                {customFoods.length > 0 && dbResults.length === 0 && search.length < 2 && (
+                  <div className="my-foods">
+                    <div className="my-foods-header">
+                      <div className="quick-label">My Foods</div>
+                    </div>
+                    <div className="quick-grid">
+                      {customFoods.map(f=>(
+                        <div key={f.id} className="my-food-chip">
+                          <button className="my-food-fill" onClick={()=>fill(f)}>{f.name}</button>
+                          <button className="my-food-del" onClick={()=>onDeleteCustomFood(f.id)} title="Remove">×</button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* ── Manual form ── */}
                 <form className="modal-form" onSubmit={submit}>
