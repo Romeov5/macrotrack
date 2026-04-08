@@ -1159,6 +1159,7 @@
         clearTimeout(searchTimer.current);
         const q = search.trim();
         if (q.length < 3) { setDbResults([]); setDbStatus(q.length > 0 ? 'short' : 'idle'); return; }
+        setDbResults([]);
         setDbStatus('loading');
         searchTimer.current = setTimeout(async () => {
           const r1 = v => Math.round(Number(v) * 10) / 10;
@@ -1359,9 +1360,9 @@
                   <div className="food-search-results">
                     {dbStatus === 'short'     && <div className="food-search-hint">Type at least 3 characters to search…</div>}
                     {dbStatus === 'loading'   && <div className="food-search-hint">Searching…</div>}
-                    {dbStatus === 'noresults' && <div className="food-search-hint">No results found — try a different term</div>}
-                    {dbStatus === 'ratelimit' && <div className="food-search-hint">Search limit reached — try again in a minute</div>}
-                    {dbStatus === 'error'     && <div className="food-search-hint">Search unavailable — enter food manually below</div>}
+                    {dbStatus === 'noresults' && dbResults.length === 0 && <div className="food-search-hint">No results found — try a different term</div>}
+                    {dbStatus === 'ratelimit' && dbResults.length === 0 && <div className="food-search-hint">Search limit reached — try again in a minute</div>}
+                    {dbStatus === 'error'     && dbResults.length === 0 && <div className="food-search-hint">Search unavailable — enter food manually below</div>}
                     {dbResults.map((item, i) => (
                       <div key={i} className="food-result-item" onClick={() => fillFromDb(item)}>
                         <div>
