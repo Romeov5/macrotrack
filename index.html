@@ -1290,7 +1290,9 @@
       const searchTimer = React.useRef(null);
       const [scanMode, setScanMode] = useState(false);
       const [scanState, setScanState] = useState('idle'); // idle | scanning | loading | notfound | error | camerror
+      const [lastBarcode, setLastBarcode] = useState('');
       const scannerRef = React.useRef(null);
+      const restartScanner = () => { setScanMode(false); setTimeout(() => setScanMode(true), 80); };
       const { label, emoji } = MEAL_META[meal];
 
       // ── Scanner lifecycle (html5-qrcode) ──────────────
@@ -1315,108 +1317,124 @@
 
         const onSuccess = async (barcode) => {
           if (!active) return;
-          // Require 3 reads of the same code to prevent false positives
+          // Require 2 consecutive reads to confirm (fast but reliable)
           if (barcode === lastCode) { streak++; } else { lastCode = barcode; streak = 1; }
-          if (streak < 3) return;
+          if (streak < 2) return;
 
           active = false;
           try { await qr.stop(); } catch {}
           scannerRef.current = null;
           setScanState('loading');
+          setLastBarcode(barcode);
 
+          // Build candidate URLs: try the raw barcode AND the EAN-13 variant
+          // (US UPC-A is 12 digits; many OFf entries are stored as 13-digit EAN-13 with a leading 0)
+          const candidates = [barcode];
+          if (barcode.length === 12) candidates.push('0' + barcode);
+          if (barcode.length === 13 && barcode.startsWith('0')) candidates.push(barcode.slice(1));
+
+          const OZ_TO_G = 28.3495;
+          const r1 = v => String(Math.round(Number(v) * 10) / 10);
+
+          let matched = null;
           try {
-            // v0 API — full CORS support, widely available
-            const res  = await fetch(`https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(barcode)}.json`);
-            const json = await res.json();
+            for (const code of candidates) {
+              const res  = await fetch(
+                `https://world.openfoodfacts.org/api/v0/product/${encodeURIComponent(code)}.json`,
+                { signal: AbortSignal.timeout(7000) }
+              );
+              const json = await res.json();
+              if (json.status === 1 && json.product) {
+                const p = json.product;
+                const n = p.nutriments || {};
+                const per100Cal = Number(n['energy-kcal_100g'] || n['energy-kcal'] || 0);
+                const srvCal    = Number(n['energy-kcal_serving'] || 0);
+                // Skip products with zero caloric data (missing nutrition info)
+                if (per100Cal === 0 && srvCal === 0) continue;
+                matched = { p, n }; break;
+              }
+            }
 
-            if (json.status === 1 && json.product) {
-              const p = json.product;
-              const n = p.nutriments || {};
+            if (matched) {
+              const { p, n } = matched;
 
-              // Name: prefer full name, fall back to brand + generic
               const rawName = (p.product_name || p.product_name_en || p.generic_name || '').trim();
               const brand   = (p.brands || '').split(',')[0].trim();
               const name    = rawName || (brand ? `${brand} Product` : 'Scanned Product');
 
-              // Always-available per-100g baseline from Open Food Facts
-              const per100Cal  = Number(n['energy-kcal_100g'] || n['energy-kcal'] || 0);
-              const per100Pro  = Number(n['proteins_100g']      || n.proteins      || 0);
-              const per100Carb = Number(n['carbohydrates_100g'] || n.carbohydrates || 0);
-              const per100Fat  = Number(n['fat_100g']           || n.fat           || 0);
-
-              // Per-serving values — OFf populates these when a serving size is declared
-              const srvCal  = Number(n['energy-kcal_serving'] || 0);
-              const srvPro  = Number(n['proteins_serving']      || 0);
-              const srvCarb = Number(n['carbohydrates_serving'] || 0);
-              const srvFat  = Number(n['fat_serving']           || 0);
-
-              // Labeled serving quantity and unit from the product record
-              const srvQty  = parseFloat(p.serving_quantity) || 0;
-              const srvUnit = (p.serving_quantity_unit || '').toLowerCase().trim();
-
-              const OZ_TO_G = 28.3495;
-              const r1 = v => String(Math.round(Number(v) * 10) / 10);
+              const per100Cal  = Number(n['energy-kcal_100g']  || n['energy-kcal'] || 0);
+              const per100Pro  = Number(n['proteins_100g']      || n.proteins       || 0);
+              const per100Carb = Number(n['carbohydrates_100g'] || n.carbohydrates  || 0);
+              const per100Fat  = Number(n['fat_100g']           || n.fat            || 0);
+              const srvCal     = Number(n['energy-kcal_serving']    || 0);
+              const srvPro     = Number(n['proteins_serving']       || 0);
+              const srvCarb    = Number(n['carbohydrates_serving']  || 0);
+              const srvFat     = Number(n['fat_serving']            || 0);
+              const srvQty     = parseFloat(p.serving_quantity) || 0;
+              const srvUnit    = (p.serving_quantity_unit || '').toLowerCase().trim();
 
               let servingUnit, servingAmount, quantity, calories, protein, carbs, fat;
 
               if (srvQty > 0 && (srvUnit === 'g' || srvUnit === 'ml' || srvUnit === '')) {
-                // ── Case 1: Serving weight given in grams (or ml ≈ g) ──────────────
-                // Scale macros from per-100g to the actual gram serving weight.
-                // This makes "servingAmount = X grams" and "1 serving = X grams" align perfectly.
-                servingUnit   = 'grams';
-                servingAmount = String(srvQty);
-                quantity      = String(srvQty);
-                const gScale  = srvQty / 100;
-                // Prefer OFf's own _serving values if available; they're more accurate
-                calories = srvCal  ? String(Math.round(srvCal))  : String(Math.round(per100Cal  * gScale));
-                protein  = srvPro  ? r1(srvPro)                  : r1(per100Pro  * gScale);
-                carbs    = srvCarb ? r1(srvCarb)                 : r1(per100Carb * gScale);
-                fat      = srvFat  ? r1(srvFat)                  : r1(per100Fat  * gScale);
+                // Case 1: serving size in grams — scale from per-100g baseline
+                servingUnit = 'grams'; servingAmount = String(srvQty); quantity = String(srvQty);
+                const sc = srvQty / 100;
+                calories = String(Math.round(srvCal || per100Cal * sc));
+                protein  = r1(srvPro  || per100Pro  * sc);
+                carbs    = r1(srvCarb || per100Carb * sc);
+                fat      = r1(srvFat  || per100Fat  * sc);
 
               } else if (srvQty > 0 && srvUnit === 'oz') {
-                // ── Case 2: Serving given in ounces ─────────────────────────────────
-                // Keep oz as the unit; convert to grams internally to scale macros from per-100g.
-                servingUnit   = 'oz';
-                servingAmount = String(srvQty);
-                quantity      = String(srvQty);
-                const ozScale = (srvQty * OZ_TO_G) / 100;
-                calories = srvCal  ? String(Math.round(srvCal))  : String(Math.round(per100Cal  * ozScale));
-                protein  = srvPro  ? r1(srvPro)                  : r1(per100Pro  * ozScale);
-                carbs    = srvCarb ? r1(srvCarb)                 : r1(per100Carb * ozScale);
-                fat      = srvFat  ? r1(srvFat)                  : r1(per100Fat  * ozScale);
+                // Case 2: serving size in ounces
+                servingUnit = 'oz'; servingAmount = String(srvQty); quantity = String(srvQty);
+                const sc = (srvQty * OZ_TO_G) / 100;
+                calories = String(Math.round(srvCal || per100Cal * sc));
+                protein  = r1(srvPro  || per100Pro  * sc);
+                carbs    = r1(srvCarb || per100Carb * sc);
+                fat      = r1(srvFat  || per100Fat  * sc);
 
               } else if (srvCal > 0) {
-                // ── Case 3: No gram/oz weight, but OFf has per-serving nutriments ──
-                // Use those directly — 1 serving = labeled serving macros.
-                servingUnit   = 'servings';
-                servingAmount = '1';
-                quantity      = '1';
+                // Case 3: no weight but OFf has per-serving nutriments
+                servingUnit = 'servings'; servingAmount = '1'; quantity = '1';
                 calories = String(Math.round(srvCal));
-                protein  = r1(srvPro);
-                carbs    = r1(srvCarb);
-                fat      = r1(srvFat);
+                protein  = r1(srvPro); carbs = r1(srvCarb); fat = r1(srvFat);
 
               } else {
-                // ── Case 4: No serving data at all — treat per-100g as 1 serving ──
-                servingUnit   = 'servings';
-                servingAmount = '1';
-                quantity      = '1';
-                calories = String(Math.round(per100Cal));
-                protein  = r1(per100Pro);
-                carbs    = r1(per100Carb);
-                fat      = r1(per100Fat);
+                // Case 4: try to parse serving size from the text field (e.g. "1 oz (28g)")
+                // Many US products have serving_size text but not structured serving_quantity
+                const srvText   = (p.serving_size || '').trim();
+                const gramParse = srvText.match(/\b(\d+(?:\.\d+)?)\s*g\b/i);
+                const ozParse   = srvText.match(/\b(\d+(?:\.\d+)?)\s*oz\b/i);
+                const txtQty    = gramParse ? parseFloat(gramParse[1]) : ozParse ? parseFloat(ozParse[1]) : 0;
+                const txtUnit   = gramParse ? 'g' : ozParse ? 'oz' : '';
+
+                if (txtQty > 0 && txtUnit === 'g') {
+                  servingUnit = 'grams'; servingAmount = String(txtQty); quantity = String(txtQty);
+                  const sc = txtQty / 100;
+                  calories = String(Math.round(per100Cal * sc));
+                  protein  = r1(per100Pro * sc); carbs = r1(per100Carb * sc); fat = r1(per100Fat * sc);
+                } else if (txtQty > 0 && txtUnit === 'oz') {
+                  servingUnit = 'oz'; servingAmount = String(txtQty); quantity = String(txtQty);
+                  const sc = (txtQty * OZ_TO_G) / 100;
+                  calories = String(Math.round(per100Cal * sc));
+                  protein  = r1(per100Pro * sc); carbs = r1(per100Carb * sc); fat = r1(per100Fat * sc);
+                } else {
+                  // Final fallback: show per 100g so user can adjust the quantity field themselves
+                  servingUnit = 'grams'; servingAmount = '100'; quantity = '100';
+                  calories = String(Math.round(per100Cal));
+                  protein  = r1(per100Pro); carbs = r1(per100Carb); fat = r1(per100Fat);
+                }
               }
 
               setForm({ name, servingUnit, servingAmount, quantity, calories, protein, carbs, fat });
               setErrors({});
               setScanMode(false);
+
             } else {
               setScanState('notfound');
-              setTimeout(() => setScanMode(false), 2800);
             }
           } catch {
             setScanState('error');
-            setTimeout(() => setScanMode(false), 2800);
           }
         };
 
@@ -1622,11 +1640,29 @@
               <div className="scanner-body">
                 <div id="barcode-reader" className="barcode-reader-div" />
                 <div className="scanner-status">
-                  {scanState==='scanning'  && <span className="scan-hint">Point camera at the barcode on the product</span>}
-                  {scanState==='loading'   && <span className="scan-loading">⏳ Looking up product…</span>}
-                  {scanState==='notfound'  && <span className="scan-notfound">Product not found — try entering manually</span>}
-                  {scanState==='error'     && <span className="scan-error">Network error — check connection and retry</span>}
-                  {scanState==='camerror'  && <span className="scan-camerror">Camera access denied — enable it in browser settings</span>}
+                  {scanState==='scanning' && <span className="scan-hint">📦 Point camera at the barcode on the product</span>}
+                  {scanState==='loading'  && <span className="scan-loading">⏳ Looking up product…</span>}
+                  {scanState==='notfound' && (
+                    <div style={{textAlign:'center'}}>
+                      <div className="scan-notfound" style={{marginBottom:8}}>
+                        Product not in database{lastBarcode ? ` (${lastBarcode})` : ''}.
+                      </div>
+                      <div style={{display:'flex',gap:8,justifyContent:'center'}}>
+                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={restartScanner}>🔄 Try Again</button>
+                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={() => setScanMode(false)}>✏️ Enter Manually</button>
+                      </div>
+                    </div>
+                  )}
+                  {scanState==='error' && (
+                    <div style={{textAlign:'center'}}>
+                      <div className="scan-error" style={{marginBottom:8}}>Network error — couldn't reach the database.</div>
+                      <div style={{display:'flex',gap:8,justifyContent:'center'}}>
+                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={restartScanner}>🔄 Try Again</button>
+                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={() => setScanMode(false)}>✏️ Enter Manually</button>
+                      </div>
+                    </div>
+                  )}
+                  {scanState==='camerror' && <span className="scan-camerror">Camera access denied — enable it in browser settings</span>}
                 </div>
                 <div style={{padding:'4px 16px 16px'}}>
                   <button className="btn-secondary" style={{width:'100%'}} onClick={() => setScanMode(false)}>Cancel</button>
