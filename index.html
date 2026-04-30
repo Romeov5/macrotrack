@@ -155,7 +155,7 @@
       padding: 20px; display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;
       box-shadow: var(--card-shadow);
     }
-    .summary-cal { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
+    .summary-cal { display: flex; align-items: center; gap: 14px; flex-shrink: 0; min-width: 0; }
     .summary-cal-ring {
       width: 88px; height: 88px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center; transition: background 0.4s;
@@ -166,11 +166,11 @@
     }
     .summary-cal-num { font-size: 1.1rem; font-weight: 700; line-height: 1; letter-spacing: -0.5px; }
     .summary-cal-sub { font-size: 0.68rem; color: var(--text-3); margin-top: 2px; font-weight: 500; }
-    .summary-cal-info { display: flex; flex-direction: column; gap: 4px; }
+    .summary-cal-info { display: flex; flex-direction: column; gap: 4px; min-width: 0; max-width: 150px; }
     .summary-cal-label { font-size: 0.7rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; }
-    .summary-remaining { font-size: 0.9rem; font-weight: 600; }
-    .summary-goal-text { font-size: 0.75rem; color: var(--text-3); }
-    .macro-bars { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0; }
+    .summary-remaining { font-size: 0.9rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .summary-goal-text { font-size: 0.75rem; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .macro-bars { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 140px; }
     .macro-bar-wrap { display: flex; flex-direction: column; gap: 5px; }
     .macro-bar-header { display: flex; justify-content: space-between; align-items: center; }
     .macro-bar-label { font-size: 0.76rem; font-weight: 600; }
@@ -410,31 +410,38 @@
     .quick-chip:hover { background: var(--fill); color: var(--text); }
 
     /* ── My Foods ── */
-    .my-foods { padding: 12px 16px; border-bottom: 0.5px solid var(--sep); }
-    .my-foods-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+    .my-foods { padding: 10px 14px 12px; border-top: 0.5px solid var(--sep); }
+    .my-foods-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
     .my-foods-search {
       padding: 5px 12px; background: var(--fill); border: none;
       border-radius: 99px; color: var(--text); font-size: 0.75rem; outline: none;
-      transition: all 0.2s; font-family: inherit; width: 110px;
+      transition: all 0.2s; font-family: inherit; width: 100px;
     }
-    .my-foods-search:focus { background: var(--surface2); outline: 1.5px solid var(--accent); outline-offset: 0; width: 150px; }
-    .my-foods-empty { font-size: 0.75rem; color: var(--text-3); font-style: italic; }
-    .my-food-chip {
-      display: flex; align-items: center; background: var(--fill2);
-      border-radius: 99px; overflow: hidden; transition: all 0.15s;
+    .my-foods-search:focus { background: var(--surface2); outline: 1.5px solid var(--accent); outline-offset: 0; width: 130px; }
+    .my-foods-empty { font-size: 0.75rem; color: var(--text-3); font-style: italic; padding: 4px 2px 6px; }
+    .mf-list-item {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; padding: 7px 6px; border-radius: 10px;
+      cursor: pointer; transition: background 0.15s;
     }
-    .my-food-chip:hover { background: var(--fill); }
-    .my-food-fill {
-      padding: 5px 10px 5px 13px; background: transparent; border: none;
-      color: var(--text-2); font-size: 0.75rem; cursor: pointer; font-family: inherit;
+    .mf-list-item:hover { background: var(--fill); }
+    .mf-list-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+    .mf-list-name { font-size: 0.84rem; font-weight: 500; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .mf-list-sub { font-size: 0.71rem; color: var(--text-2); }
+    .mf-list-del {
+      flex-shrink: 0; background: transparent; border: none;
+      color: var(--text-3); font-size: 1rem; cursor: pointer; line-height: 1;
+      padding: 4px 6px; border-radius: 6px; transition: all 0.15s; font-family: inherit;
     }
-    .my-food-fill:hover { color: var(--text); }
-    .my-food-del {
-      padding: 5px 9px; background: transparent; border: none; border-left: 0.5px solid var(--sep);
-      color: var(--text-3); font-size: 0.85rem; cursor: pointer; line-height: 1;
-      transition: all 0.15s; font-family: inherit;
+    .mf-list-del:hover { color: var(--red); background: rgba(192,48,48,0.08); }
+    .mf-expand-btn {
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      width: 100%; padding: 6px 0 4px; background: none; border: none;
+      border-top: 0.5px solid var(--sep); margin-top: 2px;
+      font-size: 0.75rem; font-weight: 500; color: var(--accent);
+      cursor: pointer; font-family: inherit;
     }
-    .my-food-del:hover { color: var(--red); }
+    .mf-expand-btn:hover { opacity: 0.7; }
 
     /* ── Serving unit toggle ── */
     .unit-toggle { display: flex; background: var(--surface3); border-radius: var(--r-sm); width: 100%; }
@@ -577,7 +584,6 @@
       .food-search-wrap    { padding: 10px 14px; }
       .food-search-results { padding: 4px 14px 10px; max-height: 150px; }
       .food-result-item    { padding: 8px 10px; }
-      .my-foods            { padding: 10px 14px; }
       .scan-section        { padding: 10px 14px; }
 
       /* 44px min tap targets */
@@ -1456,6 +1462,7 @@
       const [scanState, setScanState] = useState('idle'); // idle | scanning | loading | notfound | error | camerror
       const [lastBarcode, setLastBarcode] = useState('');
       const [myFoodsSearch, setMyFoodsSearch] = useState('');
+      const [showAllMyFoods, setShowAllMyFoods] = useState(false);
       const scannerRef = React.useRef(null);
       const restartScanner = () => { setScanMode(false); setTimeout(() => setScanMode(true), 80); };
       const { label, icon } = MEAL_META[meal];
@@ -1922,45 +1929,12 @@
                           </div>
                           <div className="food-result-meta">
                             P {item.protein}g · C {item.carbs}g · F {item.fat}g per {item.servingAmount}{item.servingUnit==='grams'?'g':item.servingUnit==='oz'?'oz':' srv'}
-                            {item._isMyFood && <span style={{marginLeft:6,color:'var(--accent)',fontSize:'0.7rem',fontWeight:600}}>My Foods</span>}
+                            {item._isMyFood && <span style={{marginLeft:6,color:'var(--accent)',fontSize:'0.7rem',fontWeight:600}}>Saved</span>}
                           </div>
                         </div>
                         <div className="food-result-cal">{item.displayCal} kcal</div>
                       </div>
                     ))}
-                  </div>
-                )}
-
-                {/* ── My Foods ── */}
-                {customFoods.length > 0 && dbResults.length === 0 && search.length < 2 && (
-                  <div className="my-foods">
-                    <div className="my-foods-header">
-                      <div className="quick-label">My Foods <span style={{color:'var(--text-3)',fontWeight:400,textTransform:'none',fontSize:'0.7rem',marginLeft:4}}>({customFoods.length})</span></div>
-                      <input
-                        className="my-foods-search"
-                        type="text"
-                        placeholder="Filter…"
-                        value={myFoodsSearch}
-                        onChange={e => setMyFoodsSearch(e.target.value)}
-                      />
-                    </div>
-                    {(() => {
-                      const filtered = myFoodsSearch.trim()
-                        ? customFoods.filter(f => f.name.toLowerCase().includes(myFoodsSearch.trim().toLowerCase()))
-                        : customFoods;
-                      return filtered.length === 0
-                        ? <div className="my-foods-empty">No saved foods match "{myFoodsSearch}"</div>
-                        : (
-                          <div className="quick-grid">
-                            {filtered.map(f=>(
-                              <div key={f.id} className="my-food-chip">
-                                <button className="my-food-fill" onClick={()=>fill(f)}>{f.name}</button>
-                                <button className="my-food-del" onClick={()=>onDeleteCustomFood(f.id)} title="Remove">×</button>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                    })()}
                   </div>
                 )}
 
@@ -2026,6 +2000,57 @@
                     <button type="submit" className="btn-primary">Add &amp; Save</button>
                   </div>
                 </form>
+
+                {/* ── Saved Foods ── */}
+                {customFoods.length > 0 && (
+                  <div className="my-foods">
+                    <div className="my-foods-header">
+                      <div className="quick-label">Saved Foods <span style={{color:'var(--text-3)',fontWeight:400,textTransform:'none',fontSize:'0.7rem',marginLeft:4}}>({customFoods.length})</span></div>
+                      <input
+                        className="my-foods-search"
+                        type="text"
+                        placeholder="Filter…"
+                        value={myFoodsSearch}
+                        onChange={e => { setMyFoodsSearch(e.target.value); setShowAllMyFoods(false); }}
+                      />
+                    </div>
+                    {(() => {
+                      const MF_LIMIT = 10;
+                      const filtered = myFoodsSearch.trim()
+                        ? customFoods.filter(f => f.name.toLowerCase().includes(myFoodsSearch.trim().toLowerCase()))
+                        : customFoods;
+                      const visible = (myFoodsSearch.trim() || showAllMyFoods) ? filtered : filtered.slice(0, MF_LIMIT);
+                      if (filtered.length === 0) return <div className="my-foods-empty">No saved foods match "{myFoodsSearch}"</div>;
+                      return (
+                        <>
+                          {visible.map(f => {
+                            const unit = f.servingUnit==='grams'?'g':f.servingUnit==='oz'?'oz':' srv';
+                            return (
+                              <div key={f.id} className="mf-list-item" onClick={() => fill(f)}>
+                                <div className="mf-list-left">
+                                  <span className="mf-list-name">{f.name}</span>
+                                  <span className="mf-list-sub">
+                                    {Math.round(f.calories)} kcal · P {Math.round(f.protein)}g · C {Math.round(f.carbs)}g · F {Math.round(f.fat)}g
+                                    <span style={{color:'var(--text-3)'}}> / {f.servingAmount}{unit}</span>
+                                  </span>
+                                </div>
+                                <button className="mf-list-del" onClick={e => { e.stopPropagation(); onDeleteCustomFood(f.id); }} title="Remove">×</button>
+                              </div>
+                            );
+                          })}
+                          {!myFoodsSearch.trim() && filtered.length > MF_LIMIT && (
+                            <button className="mf-expand-btn" onClick={() => setShowAllMyFoods(s => !s)}>
+                              {showAllMyFoods
+                                ? <><Icon name="upload" size={11}/> Show less</>
+                                : <><Icon name="download" size={11}/> {filtered.length - MF_LIMIT} more</>
+                              }
+                            </button>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                )}
               </>
             )}
           </div>
