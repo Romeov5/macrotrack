@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>MacroTrack — Calorie & Macro Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -12,442 +15,491 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg:       #0d0f1a;
-      --surface:  #141624;
-      --surface2: #1c1f33;
-      --surface3: #252840;
-      --border:   #2a2e4e;
-      --border2:  #363b60;
-      --text:     #e2e4f3;
-      --text-2:   #8b8fa8;
-      --text-3:   #4a4f6e;
-      --calories: #f59e0b;
-      --protein:  #3b82f6;
-      --carbs:    #10b981;
-      --fat:      #a855f7;
-      --danger:   #ef4444;
-      --accent:   #6366f1;
-      --r: 12px; --r-sm: 8px; --r-lg: 16px;
+      /* White Marble */
+      --bg:       #F0EDE8;
+      --surface:  #FFFFFF;
+      --surface2: #F7F5F2;
+      --surface3: #ECEAE5;
+      --border:   rgba(0,0,0,0.07);
+      --border2:  rgba(0,0,0,0.05);
+      --sep:      rgba(0,0,0,0.07);
+      --fill:     rgba(0,0,0,0.05);
+      --fill2:    rgba(0,0,0,0.025);
+
+      --text:     #111111;
+      --text-2:   rgba(0,0,0,0.50);
+      --text-3:   rgba(0,0,0,0.28);
+
+      /* Palette adjusted for light bg */
+      --blue:     #1E72C8;
+      --green:    #1F9E5A;
+      --orange:   #C4661A;
+      --red:      #C03030;
+      --purple:   #7040BC;
+
+      --accent:   #1E72C8;
+      --calories: #C4661A;
+      --protein:  #1E72C8;
+      --carbs:    #1F9E5A;
+      --fat:      #7040BC;
+      --danger:   #C03030;
+
+      --r:    16px;
+      --r-sm: 12px;
+      --r-lg: 22px;
+      --card-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 4px 24px rgba(0,0,0,0.07);
     }
 
-    html { font-size: 15px; }
+    html { font-size: 16px; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.5;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif;
+      background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.45;
+      -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+      font-feature-settings: 'cv11', 'ss01'; /* Inter: open digits, alt a */
     }
 
-    .app { max-width: 880px; margin: 0 auto; }
-    .main { padding: 0 16px 80px; }
+    /* Tabular numbers everywhere figures appear — keeps columns aligned */
+    .summary-cal-num, .macro-bar-value, .week-cal-num, .week-day-cals,
+    .meal-cal-badge, .food-macro, .calc-preview strong, .calc-preview span,
+    .weight-stat-val, .burned-input, .week-macro-values strong,
+    input[type=number] {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .app { max-width: 600px; margin: 0 auto; }
+    .main { padding: 0 16px 96px; }
 
     /* ── Header ── */
     .header {
-      background: var(--surface); border-bottom: 1px solid var(--border);
-      padding: 14px 16px 12px; position: sticky; top: 0; z-index: 100;
+      background: rgba(240,237,232,0.88);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 0.5px solid var(--sep);
+      padding: 12px 20px 14px; position: sticky; top: 0; z-index: 100;
     }
     .header-top {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 12px;
     }
     .brand { display: flex; align-items: center; gap: 8px; }
-    .brand-icon { font-size: 1.3rem; }
-    .brand-name { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.3px; }
-    .header-actions { display: flex; align-items: center; gap: 8px; }
+    .brand-icon { display: flex; align-items: center; color: var(--text-2); }
+    .brand-name {
+      font-size: 1.15rem; font-weight: 700; letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #111 30%, rgba(0,0,0,0.55) 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-actions { display: flex; align-items: center; gap: 6px; }
     .btn-goals {
-      display: flex; align-items: center; gap: 6px; padding: 7px 14px;
-      background: var(--surface3); border: 1px solid var(--border2);
-      border-radius: var(--r-sm); color: var(--text-2); font-size: 0.85rem;
-      cursor: pointer; transition: all 0.15s; font-family: inherit;
+      display: flex; align-items: center; gap: 5px; padding: 7px 13px;
+      background: var(--fill); border: none;
+      border-radius: 99px; color: var(--accent); font-size: 0.84rem; font-weight: 600;
+      cursor: pointer; transition: opacity 0.15s; font-family: inherit;
     }
-    .btn-goals:hover { background: var(--surface2); color: var(--text); border-color: var(--accent); }
+    .btn-goals:hover { opacity: 0.7; }
     .btn-data {
-      display: flex; align-items: center; gap: 5px; padding: 7px 12px;
-      background: var(--surface3); border: 1px solid var(--border);
-      border-radius: var(--r-sm); color: var(--text-2); font-size: 0.82rem;
-      cursor: pointer; transition: all 0.15s; font-family: inherit; white-space: nowrap;
+      display: flex; align-items: center; gap: 4px; padding: 7px 11px;
+      background: var(--fill); border: none;
+      border-radius: 99px; color: var(--text-2); font-size: 0.8rem; font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s; font-family: inherit; white-space: nowrap;
     }
-    .btn-data:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
-    .btn-data.restore:hover { border-color: var(--calories); color: var(--calories); }
+    .btn-data:hover { opacity: 0.65; }
+    .btn-data.restore:hover { color: var(--text); opacity: 1; }
     .import-toast {
-      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-      background: var(--surface3); border: 1px solid var(--carbs); color: var(--carbs);
-      padding: 10px 20px; border-radius: var(--r); font-size: 0.88rem; font-weight: 600;
-      z-index: 999; animation: slide-up 0.2s ease;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+      background: var(--surface2); color: var(--text);
+      padding: 12px 22px; border-radius: 14px; font-size: 0.88rem; font-weight: 600;
+      z-index: 999; animation: toast-in 0.25s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.55);
     }
-    .import-toast.error { border-color: var(--danger); color: var(--danger); }
-    .header-nav { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .import-toast.error { color: var(--danger); }
+    @keyframes toast-in {
+      from { transform: translateX(-50%) translateY(10px); opacity: 0; }
+      to   { transform: translateX(-50%) translateY(0);    opacity: 1; }
+    }
+    .header-nav { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    /* iOS Segmented Control */
     .view-toggle {
-      display: flex; background: var(--surface3); border-radius: var(--r-sm);
-      padding: 3px; border: 1px solid var(--border);
+      display: flex; background: var(--surface3); border-radius: 9px;
+      padding: 2px; border: none; flex-shrink: 0;
     }
     .view-btn {
-      padding: 5px 16px; border-radius: 6px; font-size: 0.85rem; font-weight: 500;
+      padding: 5px 18px; border-radius: 7px; font-size: 0.84rem; font-weight: 500;
       cursor: pointer; background: transparent; border: none; color: var(--text-2);
-      transition: all 0.15s; font-family: inherit;
+      transition: all 0.2s ease; font-family: inherit;
     }
-    .view-btn.active { background: var(--accent); color: #fff; }
+    .view-btn.active {
+      background: var(--surface2); color: var(--text); font-weight: 600;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.45), 0 0 1px rgba(0,0,0,0.2);
+    }
     .date-nav { display: flex; align-items: center; gap: 8px; flex: 1; justify-content: center; }
     .nav-arrow {
-      width: 30px; height: 30px; background: var(--surface3); border: 1px solid var(--border);
-      border-radius: var(--r-sm); color: var(--text-2); font-size: 1.3rem; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
-      line-height: 1; font-family: inherit;
+      width: 30px; height: 30px; background: var(--fill); border: none;
+      border-radius: 50%; color: var(--accent); font-size: 1.1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: opacity 0.15s; line-height: 1; font-family: inherit;
     }
-    .nav-arrow:hover { background: var(--surface2); color: var(--text); border-color: var(--border2); }
-    .date-label { font-size: 0.9rem; font-weight: 600; min-width: 200px; text-align: center; }
+    .nav-arrow:hover { opacity: 0.6; }
+    .date-label { font-size: 0.875rem; font-weight: 600; min-width: 0; text-align: center; flex: 1; }
     .today-btn {
-      padding: 5px 14px; background: transparent; border: 1px solid var(--accent);
-      border-radius: var(--r-sm); color: var(--accent); font-size: 0.82rem; font-weight: 500;
-      cursor: pointer; transition: all 0.15s; font-family: inherit;
+      padding: 5px 13px; background: var(--fill); border: none;
+      border-radius: 99px; color: var(--accent); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; transition: opacity 0.15s; font-family: inherit; flex-shrink: 0;
     }
-    .today-btn:hover { background: var(--accent); color: #fff; }
+    .today-btn:hover { opacity: 0.65; }
 
     /* ── Day View ── */
-    .day-view { display: flex; flex-direction: column; gap: 16px; padding-top: 16px; }
+    .day-view { display: flex; flex-direction: column; gap: 14px; padding-top: 16px; }
     .summary-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r-lg); padding: 20px; display: flex;
-      gap: 24px; align-items: flex-start; flex-wrap: wrap;
+      background: var(--surface); border-radius: var(--r-lg);
+      padding: 20px; display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;
+      box-shadow: var(--card-shadow);
     }
-    .summary-cal { display: flex; align-items: center; gap: 16px; flex-shrink: 0; }
+    .summary-cal { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
     .summary-cal-ring {
-      width: 90px; height: 90px; border-radius: 50%;
+      width: 88px; height: 88px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center; transition: background 0.4s;
     }
     .summary-cal-inner {
-      width: 72px; height: 72px; background: var(--surface); border-radius: 50%;
+      width: 70px; height: 70px; background: var(--surface); border-radius: 50%;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
-    .summary-cal-num { font-size: 1.15rem; font-weight: 700; line-height: 1; }
-    .summary-cal-sub { font-size: 0.7rem; color: var(--text-2); margin-top: 2px; }
-    .summary-cal-info { display: flex; flex-direction: column; gap: 3px; }
-    .summary-cal-label { font-size: 0.75rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; }
+    .summary-cal-num { font-size: 1.1rem; font-weight: 700; line-height: 1; letter-spacing: -0.5px; }
+    .summary-cal-sub { font-size: 0.68rem; color: var(--text-3); margin-top: 2px; font-weight: 500; }
+    .summary-cal-info { display: flex; flex-direction: column; gap: 4px; }
+    .summary-cal-label { font-size: 0.7rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; }
     .summary-remaining { font-size: 0.9rem; font-weight: 600; }
-    .summary-goal-text { font-size: 0.78rem; color: var(--text-3); }
-    .macro-bars { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 200px; }
+    .summary-goal-text { font-size: 0.75rem; color: var(--text-3); }
+    .macro-bars { display: flex; flex-direction: column; gap: 10px; flex: 1; min-width: 0; }
     .macro-bar-wrap { display: flex; flex-direction: column; gap: 5px; }
     .macro-bar-header { display: flex; justify-content: space-between; align-items: center; }
-    .macro-bar-label { font-size: 0.78rem; font-weight: 600; }
-    .macro-bar-value { font-size: 0.82rem; }
-    .macro-bar-goal { color: var(--text-3); font-size: 0.78rem; }
-    .progress-track { height: 6px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
-    .progress-fill { height: 100%; border-radius: 99px; transition: width 0.35s ease; }
+    .macro-bar-label { font-size: 0.76rem; font-weight: 600; }
+    .macro-bar-value { font-size: 0.8rem; }
+    .macro-bar-goal { color: var(--text-3); font-size: 0.76rem; }
+    .progress-track { height: 5px; background: var(--fill); border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 99px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1); }
 
     /* ── Burned Card ── */
     .burned-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 13px 16px;
-      display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+      background: var(--surface); border-radius: var(--r);
+      padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+      box-shadow: var(--card-shadow);
     }
-    .burned-icon { font-size: 1.35rem; flex-shrink: 0; }
+    .burned-icon { font-size: 1.3rem; flex-shrink: 0; }
     .burned-info { flex: 1; min-width: 0; }
     .burned-label { font-size: 0.88rem; font-weight: 600; }
-    .burned-sub   { font-size: 0.75rem; color: var(--text-2); margin-top: 1px; }
-    .burned-boost { font-size: 0.75rem; color: #f97316; font-weight: 600; margin-top: 1px; }
+    .burned-sub   { font-size: 0.74rem; color: var(--text-2); margin-top: 1px; }
+    .burned-boost { font-size: 0.74rem; color: var(--orange); font-weight: 600; margin-top: 1px; }
     .burned-input-wrap { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
     .burned-input {
-      width: 82px; padding: 6px 10px; text-align: right;
-      background: var(--surface2); border: 1px solid var(--border2);
-      border-radius: var(--r-sm); color: var(--text); font-size: 0.9rem;
-      outline: none; -moz-appearance: textfield;
+      width: 80px; padding: 7px 10px; text-align: right;
+      background: var(--fill); border: none;
+      border-radius: 10px; color: var(--text); font-size: 0.9rem;
+      outline: none; -moz-appearance: textfield; font-family: inherit;
     }
     .burned-input::-webkit-outer-spin-button,
     .burned-input::-webkit-inner-spin-button { -webkit-appearance: none; }
-    .burned-input:focus { border-color: #f97316; }
+    .burned-input:focus { background: var(--surface2); outline: 1px solid rgba(255,255,255,0.18); outline-offset: 0; }
     .burned-unit { font-size: 0.8rem; color: var(--text-2); }
-    .summary-goal-bonus { color: #f97316; font-weight: 600; }
+    .summary-goal-bonus { color: var(--orange); font-weight: 600; }
 
     /* ── Meals Grid ── */
-    .meals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .meals-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
     @media (max-width: 560px) { .meals-grid { grid-template-columns: 1fr; } }
 
     /* ── Meal Card ── */
     .meal-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r); overflow: hidden; transition: border-color 0.15s;
+      background: var(--surface); border-radius: var(--r);
+      overflow: hidden; box-shadow: var(--card-shadow);
     }
-    .meal-card:hover { border-color: var(--border2); }
     .meal-header {
       display: flex; align-items: center; justify-content: space-between;
       padding: 14px 14px 10px; cursor: pointer; user-select: none;
     }
     .meal-title { display: flex; align-items: center; gap: 8px; }
-    .meal-emoji { font-size: 1.1rem; }
-    .meal-label { font-weight: 600; font-size: 0.92rem; }
+    .meal-emoji { display: flex; align-items: center; color: var(--text-2); }
+    .meal-label { font-weight: 600; font-size: 0.9rem; }
     .meal-count {
-      font-size: 0.72rem; color: var(--text-3); background: var(--surface3);
-      border-radius: 99px; padding: 1px 8px;
+      font-size: 0.7rem; color: var(--text-3); background: var(--fill);
+      border-radius: 99px; padding: 2px 8px; font-weight: 500;
     }
     .meal-header-right { display: flex; align-items: center; gap: 8px; }
-    .meal-cal-badge { font-size: 0.8rem; font-weight: 600; color: var(--calories); }
+    .meal-cal-badge { font-size: 0.78rem; font-weight: 700; color: var(--calories); }
     .meal-chevron {
-      color: var(--text-3); font-size: 1.1rem; display: inline-block;
-      transition: transform 0.2s; transform: rotate(90deg);
+      color: var(--text-3); font-size: 0.78rem; display: flex; align-items: center;
+      transition: transform 0.2s ease;
     }
-    .meal-chevron.open { transform: rotate(-90deg); }
+    .meal-chevron.open { transform: rotate(90deg); }
     .meal-macro-row { display: flex; gap: 6px; padding: 0 14px 10px; }
-    .macro-chip { font-size: 0.72rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
-    .macro-chip.protein { background: rgba(59,130,246,0.15); color: var(--protein); }
-    .macro-chip.carbs   { background: rgba(16,185,129,0.15); color: var(--carbs); }
-    .macro-chip.fat     { background: rgba(168,85,247,0.15); color: var(--fat); }
-    .food-list { padding: 0 10px; display: flex; flex-direction: column; gap: 1px; }
+    .macro-chip { font-size: 0.7rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+    .macro-chip.protein { background: rgba(30,114,200,0.10);  color: var(--protein); }
+    .macro-chip.carbs   { background: rgba(31,158,90,0.10);   color: var(--carbs); }
+    .macro-chip.fat     { background: rgba(112,64,188,0.10);  color: var(--fat); }
+    /* iOS inset list style */
+    .food-list { padding: 0 10px; display: flex; flex-direction: column; }
     .food-item {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 8px 6px; border-radius: var(--r-sm); transition: background 0.1s;
+      padding: 9px 6px; transition: background 0.1s;
     }
-    .food-item:hover { background: var(--surface2); }
+    .food-item + .food-item { border-top: 0.5px solid var(--sep); }
     .food-item-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
     .food-name { font-size: 0.88rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .food-macros { display: flex; gap: 8px; flex-wrap: wrap; }
-    .food-macro { font-size: 0.72rem; color: var(--text-3); }
+    .food-macro { font-size: 0.7rem; color: var(--text-3); }
     .food-macro.cal  { color: var(--calories); font-weight: 600; }
     .food-macro.prot { color: var(--protein); }
     .food-macro.carb { color: var(--carbs); }
     .food-macro.fat  { color: var(--fat); }
     .remove-btn {
-      width: 24px; height: 24px; background: transparent; border: 1px solid transparent;
-      border-radius: 6px; color: var(--text-3); font-size: 1.1rem; cursor: pointer;
+      width: 26px; height: 26px; background: var(--fill); border: none;
+      border-radius: 50%; color: var(--text-3); font-size: 1rem; cursor: pointer;
       display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-      transition: all 0.15s; line-height: 1; font-family: inherit;
+      transition: all 0.15s; line-height: 1; font-family: inherit; opacity: 0.55;
     }
-    .remove-btn:hover { background: rgba(239,68,68,0.15); border-color: var(--danger); color: var(--danger); }
+    .food-item:hover .remove-btn { opacity: 1; }
+    .remove-btn:hover { background: rgba(192,48,48,0.10); color: var(--red); }
     .add-food-btn {
-      width: 100%; padding: 10px; background: transparent; border: none;
-      border-top: 1px solid var(--border); color: var(--accent); font-size: 0.85rem;
-      font-weight: 500; cursor: pointer; display: flex; align-items: center;
-      justify-content: center; gap: 6px; transition: background 0.15s;
-      margin-top: 6px; font-family: inherit;
+      width: 100%; padding: 12px 10px; background: transparent; border: none;
+      border-top: 0.5px solid var(--sep); color: var(--accent); font-size: 0.875rem;
+      font-weight: 600; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; gap: 6px; transition: opacity 0.15s;
+      margin-top: 4px; font-family: inherit;
     }
-    .add-food-btn:hover { background: rgba(99,102,241,0.08); }
-    .add-food-plus { font-size: 1.1rem; line-height: 1; }
+    .add-food-btn:hover { opacity: 0.65; }
+    .add-food-plus { font-size: 1rem; line-height: 1; }
 
     /* ── Week View ── */
-    .week-view { display: flex; flex-direction: column; gap: 16px; padding-top: 16px; }
+    .week-view { display: flex; flex-direction: column; gap: 14px; padding-top: 16px; }
     .week-summary-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r-lg); padding: 20px;
+      background: var(--surface); border-radius: var(--r-lg); padding: 20px;
+      box-shadow: var(--card-shadow);
     }
     .week-summary-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-    .week-summary-title { font-size: 1rem; font-weight: 700; }
-    .week-summary-sub { font-size: 0.78rem; color: var(--text-2); margin-top: 2px; }
+    .week-summary-title { font-size: 1rem; font-weight: 700; letter-spacing: -0.3px; }
+    .week-summary-sub { font-size: 0.76rem; color: var(--text-2); margin-top: 2px; }
     .week-cal-badge { text-align: right; display: flex; flex-direction: column; gap: 2px; }
-    .week-cal-num { font-size: 1.4rem; font-weight: 800; }
-    .week-cal-label { font-size: 0.78rem; color: var(--text-2); }
-    .week-cal-remaining { font-size: 0.82rem; font-weight: 600; }
+    .week-cal-num { font-size: 1.4rem; font-weight: 800; letter-spacing: -1px; }
+    .week-cal-label { font-size: 0.76rem; color: var(--text-2); }
+    .week-cal-remaining { font-size: 0.8rem; font-weight: 600; }
     .week-macro-stack { display: flex; flex-direction: column; gap: 10px; }
-    .week-macro-row { display: flex; align-items: center; gap: 12px; }
-    .week-macro-label { font-size: 0.78rem; font-weight: 600; width: 60px; flex-shrink: 0; }
-    .week-macro-bar-track { flex: 1; height: 7px; background: var(--surface3); border-radius: 99px; overflow: hidden; }
-    .week-macro-bar-fill { height: 100%; border-radius: 99px; transition: width 0.35s; }
-    .week-macro-values { font-size: 0.8rem; min-width: 130px; text-align: right; }
-    .week-macro-goal { color: var(--text-3); font-size: 0.75rem; }
-    .week-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+    .week-macro-row { display: flex; align-items: center; gap: 10px; }
+    .week-macro-label { font-size: 0.76rem; font-weight: 600; width: 56px; flex-shrink: 0; }
+    .week-macro-bar-track { flex: 1; height: 5px; background: var(--fill); border-radius: 99px; overflow: hidden; }
+    .week-macro-bar-fill { height: 100%; border-radius: 99px; transition: width 0.4s cubic-bezier(0.4,0,0.2,1); }
+    .week-macro-values { font-size: 0.78rem; min-width: 0; text-align: right; white-space: nowrap; }
+    .week-macro-goal { color: var(--text-3); font-size: 0.72rem; }
+    .week-days-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
     .week-day-card {
-      background: var(--surface); border: 1px solid var(--border);
-      border-radius: var(--r); padding: 10px 6px; cursor: pointer;
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
-      transition: all 0.15s; font-family: inherit;
+      background: var(--surface); border-radius: 12px; padding: 10px 4px; cursor: pointer;
+      display: flex; flex-direction: column; align-items: center; gap: 3px;
+      transition: all 0.2s ease; font-family: inherit; border: none;
+      box-shadow: var(--card-shadow);
     }
-    .week-day-card:hover { border-color: var(--border2); background: var(--surface2); }
-    .week-day-card.selected { border-color: var(--accent); background: rgba(99,102,241,0.08); }
-    .week-day-abbr { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; }
+    .week-day-card:hover { transform: translateY(-1px); }
+    .week-day-card.selected { background: var(--surface); box-shadow: 0 0 0 1.5px var(--accent), 0 4px 20px rgba(30,114,200,0.12); }
+    .week-day-card.selected .week-day-abbr,
+    .week-day-card.selected .week-day-date,
+    .week-day-card.selected .week-day-unit { color: var(--text-2); }
+    .week-day-card.selected .week-day-cals { color: var(--text); }
+    .week-day-abbr { font-size: 0.68rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.3px; }
     .week-day-card.today .week-day-abbr { color: var(--accent); }
-    .week-day-date { font-size: 0.68rem; color: var(--text-3); }
+    .week-day-card.selected .week-day-abbr { color: var(--accent); }
+    .week-day-date { font-size: 0.65rem; color: var(--text-3); }
     .week-bar-track {
-      width: 28px; height: 60px; background: var(--surface3); border-radius: 6px;
-      overflow: hidden; display: flex; align-items: flex-end; margin: 4px 0;
+      width: 24px; height: 52px; background: var(--fill); border-radius: 6px;
+      overflow: hidden; display: flex; align-items: flex-end; margin: 3px 0;
     }
-    .week-bar-fill { width: 100%; border-radius: 6px; transition: height 0.4s ease; min-height: 3px; }
-    .week-day-cals { font-size: 0.78rem; font-weight: 700; line-height: 1; }
-    .week-day-cals.over { color: var(--danger); }
+    .week-day-card.selected .week-bar-track { background: rgba(0,0,0,0.06); }
+    .week-bar-fill { width: 100%; border-radius: 6px; transition: height 0.4s cubic-bezier(0.4,0,0.2,1); min-height: 3px; }
+    .week-day-cals { font-size: 0.72rem; font-weight: 700; line-height: 1; }
+    .week-day-cals.over { color: var(--red); }
     .week-day-cals.empty { color: var(--text-3); }
-    .week-day-unit { font-size: 0.62rem; color: var(--text-3); }
-    .week-day-goal-line { text-align: center; color: var(--text-3); font-size: 0.78rem; padding-bottom: 8px; }
+    .week-day-unit { font-size: 0.6rem; color: var(--text-3); }
+    .week-day-goal-line { text-align: center; color: var(--text-3); font-size: 0.76rem; padding-bottom: 4px; }
 
     /* ── Weight Tracker ── */
-    .weight-tracker { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 20px; }
+    .weight-tracker { background: var(--surface); border-radius: var(--r-lg); padding: 20px; box-shadow: var(--card-shadow); }
     .weight-tracker-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
-    .weight-tracker-title { font-size: 1rem; font-weight: 700; }
-    .weight-tracker-sub { font-size: 0.78rem; color: var(--text-2); margin-top: 2px; }
-    .weight-unit-toggle { display: flex; background: var(--surface3); border-radius: var(--r-sm); border: 1px solid var(--border); }
-    .weight-unit-btn { padding: 6px 14px; border: none; background: transparent; color: var(--text-2); font-size: 0.82rem; font-weight: 500; cursor: pointer; border-radius: calc(var(--r-sm) - 1px); transition: all 0.15s; font-family: inherit; }
-    .weight-unit-btn.active { background: var(--accent); color: #fff; }
-    .weight-entry-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; margin-bottom: 16px; }
+    .weight-tracker-title { font-size: 1rem; font-weight: 700; letter-spacing: -0.3px; }
+    .weight-tracker-sub { font-size: 0.76rem; color: var(--text-2); margin-top: 2px; }
+    .weight-unit-toggle { display: flex; background: var(--surface3); border-radius: 8px; }
+    .weight-unit-btn { padding: 5px 14px; border: none; background: transparent; color: var(--text-2); font-size: 0.8rem; font-weight: 500; cursor: pointer; border-radius: 6px; transition: all 0.2s; font-family: inherit; }
+    .weight-unit-btn.active { background: var(--surface2); color: var(--text); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+    .weight-entry-card { background: var(--fill2); border-radius: var(--r-sm); padding: 14px; margin-bottom: 14px; }
     .weight-entry-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.85rem; font-weight: 600; }
-    .weight-entry-date { font-size: 0.78rem; color: var(--text-2); font-weight: 400; }
+    .weight-entry-date { font-size: 0.76rem; color: var(--text-2); font-weight: 400; }
     .weight-entry-row { display: flex; gap: 8px; align-items: center; }
     .weight-entry-input {
-      flex: 1; padding: 9px 12px; background: var(--surface); border: 1px solid var(--border2);
+      flex: 1; padding: 9px 12px; background: var(--surface2); border: none;
       border-radius: var(--r-sm); color: var(--text); font-size: 0.95rem; outline: none;
-      transition: border-color 0.15s; font-family: inherit;
+      transition: all 0.15s; font-family: inherit;
     }
-    .weight-entry-input:focus { border-color: var(--accent); }
+    .weight-entry-input:focus { outline: 1px solid rgba(255,255,255,0.2); outline-offset: 0; }
     .weight-entry-input::placeholder { color: var(--text-3); }
     .weight-entry-save { padding: 9px 18px !important; white-space: nowrap; }
-    .weight-entry-hint { font-size: 0.78rem; color: var(--text-2); margin-top: 8px; }
+    .weight-entry-hint { font-size: 0.76rem; color: var(--text-2); margin-top: 8px; }
     .weight-chart-wrap { margin-bottom: 16px; }
-    .weight-chart-label { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .weight-chart-label { font-size: 0.68rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
     .weight-chart-svg { width: 100%; height: auto; display: block; }
-    .chart-no-data { font-size: 0.78rem; color: var(--text-3); text-align: center; padding: 28px 0 12px; font-style: italic; }
-    .weight-stats { display: flex; gap: 0; padding-top: 14px; border-top: 1px solid var(--border); flex-wrap: wrap; }
-    .weight-stat { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 80px; padding: 0 16px; border-right: 1px solid var(--border); }
+    .chart-no-data { font-size: 0.76rem; color: var(--text-3); text-align: center; padding: 24px 0 8px; font-style: italic; }
+    .weight-stats { display: flex; gap: 0; padding-top: 14px; border-top: 0.5px solid var(--sep); flex-wrap: wrap; }
+    .weight-stat { display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 70px; padding: 0 14px; border-right: 0.5px solid var(--sep); }
     .weight-stat:first-child { padding-left: 0; }
     .weight-stat:last-child { border-right: none; }
-    .weight-stat-label { font-size: 0.68rem; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .weight-stat-label { font-size: 0.65rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
     .weight-stat-val { font-size: 1rem; font-weight: 700; }
 
-    /* ── Modals ── */
+    /* ── Modals — iOS bottom sheet ── */
     .modal-backdrop {
-      position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px);
-      display: flex; align-items: center; justify-content: center; z-index: 200;
-      padding: 16px; animation: fade-in 0.15s ease;
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5);
+      backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      display: flex; align-items: flex-end; justify-content: center;
+      z-index: 200; padding: 0; animation: fade-in 0.2s ease;
     }
     @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
     .modal {
-      background: var(--surface); border: 1px solid var(--border2);
-      border-radius: var(--r-lg); width: 100%; max-width: 480px;
-      max-height: 90vh; overflow-y: auto; animation: slide-up 0.2s ease;
-      box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+      background: var(--surface); width: 100%; max-width: 600px;
+      border-radius: 20px 20px 0 0; max-height: 92vh;
+      overflow-y: auto; animation: sheet-up 0.35s cubic-bezier(0.32,0.72,0,1);
+      box-shadow: 0 -2px 40px rgba(0,0,0,0.12);
     }
-    @keyframes slide-up { from { transform: translateY(20px); opacity: 0; } to { transform: none; opacity: 1; } }
+    @keyframes sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    /* Drag handle */
+    .modal-drag-handle {
+      width: 36px; height: 4px; background: rgba(0,0,0,0.12);
+      border-radius: 2px; margin: 10px auto 0;
+    }
     .modal-header {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 18px 20px 14px; border-bottom: 1px solid var(--border);
+      padding: 12px 20px 14px; border-bottom: 0.5px solid var(--sep);
     }
     .modal-title { font-size: 1rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
     .modal-close {
-      width: 28px; height: 28px; background: var(--surface3); border: 1px solid var(--border);
-      border-radius: var(--r-sm); color: var(--text-2); font-size: 1.1rem; cursor: pointer;
-      display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+      width: 28px; height: 28px; background: var(--fill); border: none;
+      border-radius: 50%; color: var(--text-2); font-size: 1rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: opacity 0.15s;
       line-height: 1; font-family: inherit;
     }
-    .modal-close:hover { color: var(--text); border-color: var(--border2); }
-    .food-search-wrap { padding: 12px 20px; border-bottom: 1px solid var(--border); position: relative; }
+    .modal-close:hover { opacity: 0.6; }
+    .food-search-wrap { padding: 12px 16px; border-bottom: 0.5px solid var(--sep); }
     .food-search-input {
-      width: 100%; padding: 9px 14px; background: var(--surface2);
-      border: 1px solid var(--border2); border-radius: var(--r-sm);
-      color: var(--text); font-size: 0.92rem; outline: none;
+      width: 100%; padding: 10px 14px; background: var(--fill);
+      border: none; border-radius: 12px;
+      color: var(--text); font-size: 0.95rem; outline: none; font-family: inherit;
     }
-    .food-search-input:focus { border-color: var(--accent); }
-    .food-search-results { padding: 6px 20px 12px; border-bottom: 1px solid var(--border); max-height: 220px; overflow-y: auto; }
-    .food-search-hint { font-size: 0.78rem; color: var(--text-3); padding: 6px 0; }
+    .food-search-input:focus { background: var(--surface2); outline: 1.5px solid var(--accent); outline-offset: 0; }
+    .food-search-results { padding: 6px 16px 10px; border-bottom: 0.5px solid var(--sep); max-height: 220px; overflow-y: auto; }
+    .food-search-hint { font-size: 0.76rem; color: var(--text-3); padding: 6px 0; }
     .food-result-item {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 9px 12px; border-radius: var(--r-sm); cursor: pointer;
-      border: 1px solid transparent; margin-bottom: 4px;
-      background: var(--surface2); transition: border-color 0.15s;
+      padding: 10px 12px; border-radius: 12px; cursor: pointer; border: none;
+      margin-bottom: 4px; background: var(--fill2); transition: background 0.15s;
     }
-    .food-result-item:hover { border-color: var(--accent); background: var(--surface3); }
+    .food-result-item:hover { background: var(--fill); }
     .food-result-name { font-size: 0.88rem; font-weight: 500; }
-    .food-result-meta { font-size: 0.75rem; color: var(--text-2); margin-top: 2px; }
-    .food-result-cal { font-size: 0.82rem; font-weight: 600; color: var(--calories); flex-shrink: 0; margin-left: 10px; }
+    .food-result-meta { font-size: 0.72rem; color: var(--text-2); margin-top: 2px; }
+    .food-result-cal { font-size: 0.82rem; font-weight: 700; color: var(--calories); flex-shrink: 0; margin-left: 10px; }
 
-    .quick-label { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .quick-label { font-size: 0.7rem; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px; }
     .quick-grid { display: flex; flex-wrap: wrap; gap: 6px; }
     .quick-chip {
-      padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border);
+      padding: 5px 12px; background: var(--fill2); border: none;
       border-radius: 99px; color: var(--text-2); font-size: 0.75rem; cursor: pointer;
       transition: all 0.15s; font-family: inherit;
     }
-    .quick-chip:hover { background: var(--surface3); border-color: var(--accent); color: var(--text); }
+    .quick-chip:hover { background: var(--fill); color: var(--text); }
 
     /* ── My Foods ── */
-    .my-foods { padding: 14px 20px; border-bottom: 1px solid var(--border); }
+    .my-foods { padding: 12px 16px; border-bottom: 0.5px solid var(--sep); }
     .my-foods-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
     .my-foods-search {
-      padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border);
+      padding: 5px 12px; background: var(--fill); border: none;
       border-radius: 99px; color: var(--text); font-size: 0.75rem; outline: none;
-      transition: border-color 0.15s; font-family: inherit; width: 120px;
+      transition: all 0.2s; font-family: inherit; width: 110px;
     }
-    .my-foods-search:focus { border-color: var(--accent); width: 160px; }
+    .my-foods-search:focus { background: var(--surface2); outline: 1.5px solid var(--accent); outline-offset: 0; width: 150px; }
     .my-foods-empty { font-size: 0.75rem; color: var(--text-3); font-style: italic; }
     .my-food-chip {
-      display: flex; align-items: center;
-      background: var(--surface2); border: 1px solid var(--border);
-      border-radius: 99px; overflow: hidden; transition: border-color 0.15s;
+      display: flex; align-items: center; background: var(--fill2);
+      border-radius: 99px; overflow: hidden; transition: all 0.15s;
     }
-    .my-food-chip:hover { border-color: var(--accent); }
+    .my-food-chip:hover { background: var(--fill); }
     .my-food-fill {
-      padding: 4px 10px 4px 12px; background: transparent; border: none;
+      padding: 5px 10px 5px 13px; background: transparent; border: none;
       color: var(--text-2); font-size: 0.75rem; cursor: pointer; font-family: inherit;
-      transition: color 0.15s;
     }
     .my-food-fill:hover { color: var(--text); }
     .my-food-del {
-      padding: 4px 8px; background: transparent; border: none; border-left: 1px solid var(--border);
+      padding: 5px 9px; background: transparent; border: none; border-left: 0.5px solid var(--sep);
       color: var(--text-3); font-size: 0.85rem; cursor: pointer; line-height: 1;
       transition: all 0.15s; font-family: inherit;
     }
-    .my-food-del:hover { background: rgba(239,68,68,0.15); color: var(--danger); }
+    .my-food-del:hover { color: var(--red); }
 
     /* ── Serving unit toggle ── */
-    .unit-toggle { display: flex; background: var(--surface3); border-radius: var(--r-sm); border: 1px solid var(--border); width: 100%; }
-    .unit-btn { flex: 1; padding: 8px 4px; border: none; background: transparent; color: var(--text-2); font-size: 0.83rem; font-weight: 500; cursor: pointer; border-radius: calc(var(--r-sm) - 1px); transition: all 0.15s; font-family: inherit; }
-    .unit-btn.active { background: var(--accent); color: #fff; }
-    .unit-tag { font-size: 0.72rem; color: var(--accent); font-weight: 600; margin-left: 4px; }
+    .unit-toggle { display: flex; background: var(--surface3); border-radius: var(--r-sm); width: 100%; }
+    .unit-btn { flex: 1; padding: 9px 4px; border: none; background: transparent; color: var(--text-2); font-size: 0.83rem; font-weight: 500; cursor: pointer; border-radius: calc(var(--r-sm) - 2px); transition: all 0.2s; font-family: inherit; }
+    .unit-btn.active { background: var(--surface2); color: var(--text); font-weight: 600; box-shadow: 0 1px 4px rgba(0,0,0,0.4); }
+    .unit-tag { font-size: 0.7rem; color: var(--accent); font-weight: 600; margin-left: 4px; }
     .calc-preview {
-      grid-column: 1/-1; background: var(--surface2); border: 1px solid var(--border);
-      border-radius: var(--r-sm); padding: 9px 12px;
-      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      grid-column: 1/-1; background: var(--fill2); border-radius: var(--r-sm); padding: 10px 12px;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
     }
-    .calc-preview-label { font-size: 0.72rem; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+    .calc-preview-label { font-size: 0.7rem; color: var(--text-3); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
     .calc-preview strong { font-size: 0.9rem; color: var(--calories); }
     .calc-preview span { font-size: 0.82rem; font-weight: 600; }
-    .food-serving-tag { font-size: 0.72rem; color: var(--text-3); background: var(--surface3); border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
-    .modal-form { padding: 16px 20px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .food-serving-tag { font-size: 0.7rem; color: var(--text-3); background: var(--fill); border-radius: 5px; padding: 1px 5px; margin-left: 4px; }
+    .modal-form { padding: 14px 16px 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .form-group { display: flex; flex-direction: column; gap: 5px; }
     .form-group.full { grid-column: 1 / -1; }
-    .form-group label { font-size: 0.78rem; font-weight: 500; color: var(--text-2); }
+    .form-group label { font-size: 0.74rem; font-weight: 600; color: var(--text-2); }
     .form-group input {
-      padding: 9px 12px; background: var(--surface2); border: 1px solid var(--border);
+      padding: 10px 12px; background: var(--fill); border: none;
       border-radius: var(--r-sm); color: var(--text); font-size: 0.9rem; outline: none;
-      transition: border-color 0.15s; font-family: inherit; width: 100%;
+      transition: all 0.15s; font-family: inherit; width: 100%;
     }
-    .form-group input:focus { border-color: var(--accent); }
-    .form-group.has-error input { border-color: var(--danger); }
-    .form-error { font-size: 0.72rem; color: var(--danger); }
-    .macro-breakdown {
-      background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r-sm);
-      padding: 12px; display: flex; flex-direction: column; gap: 8px;
-    }
-    .macro-breakdown-title { font-size: 0.72rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.5px; }
-    .macro-breakdown-bar { height: 8px; border-radius: 99px; overflow: hidden; display: flex; }
+    .form-group input:focus { background: var(--surface2); outline: 1.5px solid var(--accent); outline-offset: 0; }
+    .form-group.has-error input { outline: 1px solid var(--red); background: rgba(192,48,48,0.05); }
+    .form-error { font-size: 0.7rem; color: var(--red); }
+    .macro-breakdown { background: var(--fill2); border-radius: var(--r-sm); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+    .macro-breakdown-title { font-size: 0.7rem; font-weight: 600; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.8px; }
+    .macro-breakdown-bar { height: 7px; border-radius: 99px; overflow: hidden; display: flex; }
     .macro-breakdown-bar > div { height: 100%; transition: width 0.3s; }
     .macro-breakdown-labels { display: flex; gap: 12px; align-items: center; font-size: 0.78rem; font-weight: 600; }
-    .macro-breakdown-total { margin-left: auto; color: var(--text-2); font-weight: 400; font-size: 0.75rem; }
+    .macro-breakdown-total { margin-left: auto; color: var(--text-2); font-weight: 400; font-size: 0.72rem; }
     .modal-footer {
-      grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 10px;
-      border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px;
+      grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px;
+      border-top: 0.5px solid var(--sep); padding-top: 14px; margin-top: 4px;
     }
     .btn-primary {
-      padding: 9px 20px; background: var(--accent); border: none; border-radius: var(--r-sm);
+      padding: 10px 22px; background: var(--accent); border: none; border-radius: 12px;
       color: #fff; font-size: 0.88rem; font-weight: 600; cursor: pointer;
       transition: opacity 0.15s; font-family: inherit;
     }
-    .btn-primary:hover { opacity: 0.85; }
+    .btn-primary:hover { opacity: 0.8; }
     .btn-secondary {
-      padding: 9px 20px; background: var(--surface3); border: 1px solid var(--border2);
-      border-radius: var(--r-sm); color: var(--text-2); font-size: 0.88rem; font-weight: 500;
-      cursor: pointer; transition: all 0.15s; font-family: inherit;
+      padding: 10px 16px; background: var(--fill); border: none;
+      border-radius: 12px; color: var(--text-2); font-size: 0.88rem; font-weight: 500;
+      cursor: pointer; transition: opacity 0.15s; font-family: inherit;
     }
-    .btn-secondary:hover { background: var(--surface2); color: var(--text); }
+    .btn-secondary:hover { opacity: 0.65; }
 
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.12); border-radius: 99px; }
     input[type=number]::-webkit-inner-spin-button,
     input[type=number]::-webkit-outer-spin-button { opacity: 0.4; }
 
     /* ── Barcode Scanner ── */
-    .scan-section { padding: 12px 20px; border-bottom: 1px solid var(--border); }
+    .scan-section { padding: 12px 16px; border-bottom: 0.5px solid var(--sep); }
     .btn-scan {
-      width: 100%; padding: 11px; background: var(--surface2);
-      border: 1px dashed var(--border2); border-radius: var(--r-sm);
+      width: 100%; padding: 13px; background: rgba(30,114,200,0.08);
+      border: none; border-radius: 12px;
       color: var(--accent); font-size: 0.9rem; font-weight: 600;
-      cursor: pointer; transition: all 0.15s; font-family: inherit;
+      cursor: pointer; transition: opacity 0.15s; font-family: inherit;
       display: flex; align-items: center; justify-content: center; gap: 8px;
     }
-    .btn-scan:hover { background: rgba(99,102,241,0.1); border-color: var(--accent); border-style: solid; }
+    .btn-scan:hover { opacity: 0.7; }
     .scanner-body { display: flex; flex-direction: column; }
     .barcode-reader-div { width: 100%; height: 280px; background: #000; position: relative; overflow: hidden; }
     /* html5-qrcode overrides — hide its built-in UI chrome */
@@ -458,9 +510,93 @@
     #barcode-reader video { width: 100% !important; object-fit: cover; }
     .scanner-status { padding: 12px 20px 4px; text-align: center; min-height: 38px; }
     .scan-hint    { font-size: 0.82rem; color: var(--text-2); }
-    .scan-loading { font-size: 0.88rem; color: var(--calories); font-weight: 600; }
-    .scan-notfound, .scan-error { font-size: 0.88rem; color: var(--danger); font-weight: 600; }
-    .scan-camerror { font-size: 0.82rem; color: var(--danger); }
+    .scan-loading { font-size: 0.88rem; color: var(--text-2); font-weight: 500; }
+    .scan-notfound, .scan-error { font-size: 0.88rem; color: var(--red); font-weight: 600; }
+    .scan-camerror { font-size: 0.82rem; color: var(--red); }
+
+    /* ── Global touch ────────────────────────────────── */
+    button, [role="button"] {
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    /* ── iOS auto-zoom prevention ────────────────────── */
+    @media (max-width: 600px) {
+      input, select, textarea,
+      .food-search-input, .my-foods-search,
+      .burned-input, .weight-entry-input { font-size: 16px !important; }
+    }
+
+    /* ── Small phones (≤ 480px) ──────────────────────── */
+    @media (max-width: 480px) {
+      .header { padding: 10px 14px 10px; }
+      .header-top { margin-bottom: 10px; }
+      .header-actions { gap: 5px; }
+      .btn-data  { padding: 6px 9px; font-size: 0.76rem; }
+      .btn-goals { padding: 6px 11px; font-size: 0.78rem; }
+      .brand-name { font-size: 1rem; }
+      .date-label { font-size: 0.8rem; }
+      .header-nav { gap: 8px; }
+      .nav-arrow { width: 28px; height: 28px; }
+
+      .main { padding: 0 12px 96px; }
+
+      .summary-card { padding: 16px 14px; gap: 14px; }
+      .summary-cal-ring { width: 80px; height: 80px; }
+      .summary-cal-inner { width: 64px; height: 64px; }
+
+      .burned-card { padding: 12px 14px; }
+      .burned-input { width: 72px; }
+
+      .meals-grid { gap: 8px; }
+
+      /* Week */
+      .week-summary-card { padding: 16px 14px; }
+      .week-summary-header { flex-direction: column; gap: 8px; }
+      .week-cal-badge { text-align: left; }
+      .week-macro-label { width: 50px; }
+      .week-days-grid { gap: 4px; }
+      .week-day-card { padding: 8px 2px; border-radius: 10px; }
+      .week-bar-track { width: 20px; height: 46px; }
+      .week-day-cals { font-size: 0.65rem; }
+      .week-day-unit { font-size: 0.58rem; }
+      .week-day-abbr { font-size: 0.65rem; }
+      .week-day-date { display: none; }
+
+      /* Weight */
+      .weight-tracker { padding: 16px 14px; }
+      .weight-stat { padding: 0 10px; }
+
+      /* Modal — already bottom sheet, just reduce padding */
+      .modal-form { grid-template-columns: 1fr; padding: 12px 14px 16px; gap: 10px; }
+      .form-group.full { grid-column: 1; }
+      .modal-footer { gap: 6px; padding-top: 12px; }
+      .modal-footer .btn-secondary { padding: 10px 12px; font-size: 0.84rem; }
+      .modal-footer .btn-primary   { padding: 10px 14px; font-size: 0.84rem; }
+
+      .food-search-wrap    { padding: 10px 14px; }
+      .food-search-results { padding: 4px 14px 10px; max-height: 150px; }
+      .food-result-item    { padding: 8px 10px; }
+      .my-foods            { padding: 10px 14px; }
+      .scan-section        { padding: 10px 14px; }
+
+      /* 44px min tap targets */
+      .add-food-btn { padding: 13px 10px; }
+      .meal-header  { min-height: 44px; }
+      .food-item    { min-height: 44px; }
+      .week-day-card { min-height: 44px; }
+      .btn-scan     { padding: 14px; }
+    }
+
+    /* ── Very small (≤ 360px) ─────────────────────────── */
+    @media (max-width: 360px) {
+      .btn-data  { padding: 5px 7px; font-size: 0.72rem; }
+      .btn-goals { padding: 5px 9px; }
+      .modal-footer { flex-wrap: wrap; }
+      .modal-footer .btn-secondary:first-child { flex: 0 0 100%; order: 3; }
+      .modal-footer .btn-secondary:nth-child(2),
+      .modal-footer .btn-primary { flex: 1; }
+    }
   </style>
 </head>
 <body>
@@ -492,13 +628,41 @@
     // ── Constants ──────────────────────────────────────
     const DEFAULT_GOALS = { calories: 2000, protein: 150, carbs: 250, fat: 65 };
     const MEALS = [
-      { key:'breakfast', label:'Breakfast', emoji:'🌅' },
-      { key:'lunch',     label:'Lunch',     emoji:'☀️' },
-      { key:'dinner',    label:'Dinner',    emoji:'🌙' },
-      { key:'snack',     label:'Snacks',    emoji:'🍎' },
+      { key:'breakfast', label:'Breakfast', icon:'sunrise' },
+      { key:'lunch',     label:'Lunch',     icon:'sun' },
+      { key:'dinner',    label:'Dinner',    icon:'moon' },
+      { key:'snack',     label:'Snack',     icon:'coffee' },
     ];
 
     const emptyDay = () => ({ breakfast:[], lunch:[], dinner:[], snack:[] });
+    // ── SVG Icon component ─────────────────────────────
+    function Icon({ name, size = 16, strokeWidth = 1.6, style = {}, className = '' }) {
+      const p = {
+        zap:      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
+        sunrise:  <><path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/><line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/></>,
+        sun:      <><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></>,
+        moon:     <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>,
+        coffee:   <><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></>,
+        target:   <><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></>,
+        flame:    <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>,
+        camera:   <><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></>,
+        download: <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></>,
+        upload:   <><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></>,
+        refresh:  <><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>,
+        edit:     <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
+        star:     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>,
+      };
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" strokeWidth={strokeWidth}
+             strokeLinecap="round" strokeLinejoin="round"
+             style={{display:'inline-block',verticalAlign:'middle',flexShrink:0,...style}}
+             className={className}>
+          {p[name]}
+        </svg>
+      );
+    }
+
     const sumMacros = (items) => items.reduce((a,f)=>({
       calories: a.calories + Number(f.calories||0),
       protein:  a.protein  + Number(f.protein||0),
@@ -579,7 +743,7 @@
 
       return (
         <div className="burned-card">
-          <span className="burned-icon">🔥</span>
+          <span className="burned-icon"><Icon name="flame" size={22} strokeWidth={1.4}/></span>
           <div className="burned-info">
             <div className="burned-label">Exercise Calories Burned</div>
             {bonus > 0
@@ -603,14 +767,14 @@
     }
 
     // ── Meal Section ───────────────────────────────────
-    function MealSection({ meal, label, emoji, items, totals, onAdd, onRemove }) {
+    function MealSection({ meal, label, icon, items, totals, onAdd, onRemove }) {
       const [expanded, setExpanded] = useState(true);
       const has = items.length > 0;
       return (
         <div className="meal-card">
           <div className="meal-header" onClick={() => has && setExpanded(e=>!e)}>
             <div className="meal-title">
-              <span className="meal-emoji">{emoji}</span>
+              <span className="meal-emoji"><Icon name={icon} size={15} strokeWidth={1.5}/></span>
               <span className="meal-label">{label}</span>
               {has && <span className="meal-count">{items.length} item{items.length!==1?'s':''}</span>}
             </div>
@@ -665,9 +829,9 @@
           <SummaryCard totals={totals} goals={goals} burned={burned} />
           <BurnedCard burned={burned} onUpdate={onUpdateBurned} />
           <div className="meals-grid">
-            {MEALS.map(({key,label,emoji}) => (
+            {MEALS.map(({key,label,icon}) => (
               <MealSection
-                key={key} meal={key} label={label} emoji={emoji}
+                key={key} meal={key} label={label} icon={icon}
                 items={entries[key]} totals={sumMacros(entries[key])}
                 onAdd={() => onAddFood(key)}
                 onRemove={(id) => onRemoveFood(key, id)}
@@ -989,7 +1153,7 @@
     }
 
     // ── Add Food Modal ─────────────────────────────────
-    const MEAL_META = { breakfast:{label:'Breakfast',emoji:'🌅'}, lunch:{label:'Lunch',emoji:'☀️'}, dinner:{label:'Dinner',emoji:'🌙'}, snack:{label:'Snacks',emoji:'🍎'} };
+    const MEAL_META = { breakfast:{label:'Breakfast',icon:'sunrise'}, lunch:{label:'Lunch',icon:'sun'}, dinner:{label:'Dinner',icon:'moon'}, snack:{label:'Snack',icon:'coffee'} };
 
     // ── Local food database (USDA values, instant offline search) ──────────
     // Format: { n:name, s:serving_size, u:unit(g/srv), c:cal, p:protein, b:carbs, f:fat }
@@ -1291,9 +1455,10 @@
       const [scanMode, setScanMode] = useState(false);
       const [scanState, setScanState] = useState('idle'); // idle | scanning | loading | notfound | error | camerror
       const [lastBarcode, setLastBarcode] = useState('');
+      const [myFoodsSearch, setMyFoodsSearch] = useState('');
       const scannerRef = React.useRef(null);
       const restartScanner = () => { setScanMode(false); setTimeout(() => setScanMode(true), 80); };
-      const { label, emoji } = MEAL_META[meal];
+      const { label, icon } = MEAL_META[meal];
 
       // ── Scanner lifecycle (html5-qrcode) ──────────────
       useEffect(() => {
@@ -1468,10 +1633,49 @@
         if (q.length === 0) { setDbResults([]); setDbStatus('idle'); return; }
         if (q.length === 1) { setDbResults([]); setDbStatus('short'); return; }
 
-        // ① Instant local search — zero latency, always works
+        // ① My Foods — personal library, highest priority, appears first in results
+        const qLow2 = q.toLowerCase();
+        const r1cf = v => String(Math.round(Number(v) * 10) / 10);
+        const myFoodHits = (customFoods || [])
+          .map(f => {
+            const nLow = f.name.toLowerCase();
+            const nWords = nLow.split(/[\s\-\/]+/);
+            const qWords2 = qLow2.split(/\s+/).filter(w => w.length >= 1);
+            let score = 0;
+            if (nLow === qLow2)                                                   score = 100;
+            else if (nLow.startsWith(qLow2))                                      score = 90;
+            else if (qWords2.every(w => nWords.some(nw => nw === w)))             score = 85;
+            else if (qWords2.every(w => nWords.some(nw => nw.startsWith(w))))     score = 80;
+            else if (qWords2.every(w => nLow.includes(w)))                        score = 70;
+            else if (qWords2.some(w => nLow.includes(w)))                         score = 30;
+            return { f, score };
+          })
+          .filter(x => x.score > 0)
+          .sort((a, b) => b.score - a.score || a.f.name.length - b.f.name.length)
+          .slice(0, 5)
+          .map(({ f }) => ({
+            name: f.name, rawName: f.name,
+            servingUnit: f.servingUnit || 'servings',
+            servingAmount: String(f.servingAmount ?? 1),
+            quantity: String(f.servingAmount ?? 1),
+            calories: String(Math.round(Number(f.calories ?? f.caloriesPerServing ?? 0))),
+            protein:  r1cf(f.protein  ?? f.proteinPerServing  ?? 0),
+            carbs:    r1cf(f.carbs    ?? f.carbsPerServing    ?? 0),
+            fat:      r1cf(f.fat      ?? f.fatPerServing      ?? 0),
+            displayCal: String(Math.round(Number(f.calories ?? f.caloriesPerServing ?? 0))),
+            _isMyFood: true,
+          }));
+
+        // ② Instant local search — zero latency, always works
         const localHits = searchLocalFoods(q);
-        setDbResults(localHits);
-        setDbStatus(localHits.length > 0 ? 'done' : 'loading');
+
+        // Merge: My Foods first, then local (skip duplicates by name)
+        const myFoodNames = new Set(myFoodHits.map(x => x.rawName.toLowerCase()));
+        const freshLocal = localHits.filter(x => !myFoodNames.has(x.rawName.toLowerCase()));
+        const initialResults = [...myFoodHits, ...freshLocal];
+
+        setDbResults(initialResults);
+        setDbStatus(initialResults.length > 0 ? 'done' : 'loading');
 
         // ② Debounced API search — supplements local with branded/packaged items
         if (q.length < 3) return;
@@ -1494,19 +1698,20 @@
             return 1;
           };
 
-          // Use US-focused OFf endpoint; route through free CORS proxies
-          const offCgi  = `https://us.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&action=process&json=1&page_size=30&sort_by=unique_scans_n&lc=en&fields=product_name,brands,serving_quantity,serving_quantity_unit,nutriments`;
-          const proxies = [
-            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(offCgi)}`,
+          // OFf search — try direct first (CORS supported), then two proxy fallbacks
+          const offCgi = `https://world.openfoodfacts.org/cgi/search.pl?search_terms=${encodeURIComponent(q)}&action=process&json=1&page_size=30&sort_by=unique_scans_n&lc=en&fields=product_name,brands,serving_quantity,serving_quantity_unit,nutriments`;
+          const attempts = [
+            offCgi,   // direct — works when OFf CORS headers are present
             `https://api.allorigins.win/raw?url=${encodeURIComponent(offCgi)}`,
+            `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(offCgi)}`,
           ];
 
           let json = null;
-          for (const proxyUrl of proxies) {
+          for (const url of attempts) {
             try {
-              const res  = await fetch(proxyUrl, { signal: AbortSignal.timeout(7000) });
+              const res  = await fetch(url, { signal: AbortSignal.timeout(6000) });
               const text = await res.text();
-              if (!text.trim().startsWith('{')) continue; // proxy returned an HTML error page
+              if (!text.trim().startsWith('{') && !text.trim().startsWith('[')) continue;
               const parsed = JSON.parse(text);
               if (Array.isArray(parsed.products)) { json = parsed; break; }
             } catch { continue; }
@@ -1565,13 +1770,14 @@
             .filter((item, i, arr) => arr.findIndex(x => x.rawName.toLowerCase() === item.rawName.toLowerCase()) === i)
             .slice(0, 12);
 
-          // Merge: local DB results stay first; append unique API results (avoid duplicates)
-          const localNames = new Set(localHits.map(x => x.rawName.toLowerCase()));
-          const freshApi   = apiItems.filter(x => !localNames.has(x.rawName.toLowerCase()));
-          const combined   = [...localHits, ...freshApi].slice(0, 15);
+          // Merge: My Foods first → local DB → unique API results (no duplicates)
+          const usedNames = new Set([...myFoodHits, ...localHits].map(x => x.rawName.toLowerCase()));
+          const freshApi  = apiItems.filter(x => !usedNames.has(x.rawName.toLowerCase()));
+          const combined  = [...myFoodHits, ...freshLocal, ...freshApi].slice(0, 15);
 
+          // Never show 'noresults' if we already have local hits — API failing silently is fine
           setDbResults(combined);
-          setDbStatus(combined.length === 0 ? 'noresults' : 'done');
+          setDbStatus(combined.length > 0 ? 'done' : initialResults.length > 0 ? 'done' : 'noresults');
         }, 700);
 
         return () => clearTimeout(searchTimer.current);
@@ -1593,7 +1799,6 @@
 
       const validate = () => {
         const e = {};
-        if (!form.name.trim()) e.name = 'Required';
         if (!Number(form.servingAmount)||Number(form.servingAmount)<=0) e.servingAmount='Must be > 0';
         if (!Number(form.quantity)||Number(form.quantity)<=0) e.quantity='Must be > 0';
         if (form.calories===''||isNaN(Number(form.calories))||Number(form.calories)<0) e.calories='Required';
@@ -1601,18 +1806,28 @@
         return e;
       };
 
+      const buildFood = (noSave = false) => ({
+        name: form.name.trim() || 'Custom Food',
+        servingUnit: form.servingUnit,
+        servingAmount: Number(form.servingAmount), quantity: Number(form.quantity),
+        caloriesPerServing: Number(form.calories)||0, proteinPerServing: Number(form.protein)||0,
+        carbsPerServing: Number(form.carbs)||0, fatPerServing: Number(form.fat)||0,
+        calories: round1((Number(form.calories)||0)*mult), protein: round1((Number(form.protein)||0)*mult),
+        carbs: round1((Number(form.carbs)||0)*mult), fat: round1((Number(form.fat)||0)*mult),
+        _noSave: noSave,
+      });
+
       const submit = (ev) => {
         ev.preventDefault();
         const e = validate();
         if (Object.keys(e).length) { setErrors(e); return; }
-        onAdd({
-          name:form.name.trim(), servingUnit:form.servingUnit,
-          servingAmount:Number(form.servingAmount), quantity:Number(form.quantity),
-          caloriesPerServing:Number(form.calories)||0, proteinPerServing:Number(form.protein)||0,
-          carbsPerServing:Number(form.carbs)||0, fatPerServing:Number(form.fat)||0,
-          calories:round1((Number(form.calories)||0)*mult), protein:round1((Number(form.protein)||0)*mult),
-          carbs:round1((Number(form.carbs)||0)*mult), fat:round1((Number(form.fat)||0)*mult),
-        });
+        onAdd(buildFood(false));
+      };
+
+      const submitNoSave = () => {
+        const e = validate();
+        if (Object.keys(e).length) { setErrors(e); return; }
+        onAdd(buildFood(true));
       };
 
       const fill = (f) => {
@@ -1628,9 +1843,10 @@
       return (
         <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && !scanMode && onClose()}>
           <div className="modal">
+            <div className="modal-drag-handle" />
             <div className="modal-header">
               <div className="modal-title">
-                {scanMode ? '📷 Scan Barcode' : <><span>{emoji}</span> Add to {label}</>}
+                {scanMode ? <><Icon name="camera" size={16}/> Scan Barcode</> : <><Icon name={icon} size={15}/> Add to {label}</>}
               </div>
               <button className="modal-close" onClick={scanMode ? () => setScanMode(false) : onClose}>×</button>
             </div>
@@ -1648,8 +1864,8 @@
                         Product not in database{lastBarcode ? ` (${lastBarcode})` : ''}.
                       </div>
                       <div style={{display:'flex',gap:8,justifyContent:'center'}}>
-                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={restartScanner}>🔄 Try Again</button>
-                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={() => setScanMode(false)}>✏️ Enter Manually</button>
+                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={restartScanner}>Retry</button>
+                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={() => setScanMode(false)}>Enter Manually</button>
                       </div>
                     </div>
                   )}
@@ -1657,8 +1873,8 @@
                     <div style={{textAlign:'center'}}>
                       <div className="scan-error" style={{marginBottom:8}}>Network error — couldn't reach the database.</div>
                       <div style={{display:'flex',gap:8,justifyContent:'center'}}>
-                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={restartScanner}>🔄 Try Again</button>
-                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={() => setScanMode(false)}>✏️ Enter Manually</button>
+                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={restartScanner}>Retry</button>
+                        <button className="btn-secondary" style={{fontSize:'0.8rem',padding:'5px 12px'}} onClick={() => setScanMode(false)}>Enter Manually</button>
                       </div>
                     </div>
                   )}
@@ -1673,7 +1889,7 @@
                 {/* ── Scan button ── */}
                 <div className="scan-section">
                   <button type="button" className="btn-scan" onClick={() => setScanMode(true)}>
-                    📷 Scan Product Barcode
+                    <Icon name="camera" size={16} style={{marginRight:6}}/> Scan Product Barcode
                   </button>
                 </div>
 
@@ -1697,11 +1913,16 @@
                     {dbStatus === 'noresults' && <div className="food-search-hint">No results — try a different term or enter manually</div>}
                     {dbStatus === 'error'     && <div className="food-search-hint">Search unavailable — check connection or enter manually</div>}
                     {dbResults.map((item, i) => (
-                      <div key={i} className="food-result-item" onClick={() => fillFromDb(item)}>
-                        <div>
-                          <div className="food-result-name">{item.name}</div>
+                      <div key={i} className="food-result-item" onClick={() => fillFromDb(item)}
+                        style={item._isMyFood ? {borderColor:'rgba(99,102,241,0.5)',background:'rgba(99,102,241,0.06)'} : {}}>
+                        <div style={{minWidth:0}}>
+                          <div className="food-result-name">
+                            {item._isMyFood && <Icon name="star" size={11} strokeWidth={1.5} style={{marginRight:4,color:'var(--text-3)'}}/>}
+                            {item.name}
+                          </div>
                           <div className="food-result-meta">
                             P {item.protein}g · C {item.carbs}g · F {item.fat}g per {item.servingAmount}{item.servingUnit==='grams'?'g':item.servingUnit==='oz'?'oz':' srv'}
+                            {item._isMyFood && <span style={{marginLeft:6,color:'var(--accent)',fontSize:'0.7rem',fontWeight:600}}>My Foods</span>}
                           </div>
                         </div>
                         <div className="food-result-cal">{item.displayCal} kcal</div>
@@ -1714,23 +1935,39 @@
                 {customFoods.length > 0 && dbResults.length === 0 && search.length < 2 && (
                   <div className="my-foods">
                     <div className="my-foods-header">
-                      <div className="quick-label">My Foods</div>
+                      <div className="quick-label">My Foods <span style={{color:'var(--text-3)',fontWeight:400,textTransform:'none',fontSize:'0.7rem',marginLeft:4}}>({customFoods.length})</span></div>
+                      <input
+                        className="my-foods-search"
+                        type="text"
+                        placeholder="Filter…"
+                        value={myFoodsSearch}
+                        onChange={e => setMyFoodsSearch(e.target.value)}
+                      />
                     </div>
-                    <div className="quick-grid">
-                      {customFoods.map(f=>(
-                        <div key={f.id} className="my-food-chip">
-                          <button className="my-food-fill" onClick={()=>fill(f)}>{f.name}</button>
-                          <button className="my-food-del" onClick={()=>onDeleteCustomFood(f.id)} title="Remove">×</button>
-                        </div>
-                      ))}
-                    </div>
+                    {(() => {
+                      const filtered = myFoodsSearch.trim()
+                        ? customFoods.filter(f => f.name.toLowerCase().includes(myFoodsSearch.trim().toLowerCase()))
+                        : customFoods;
+                      return filtered.length === 0
+                        ? <div className="my-foods-empty">No saved foods match "{myFoodsSearch}"</div>
+                        : (
+                          <div className="quick-grid">
+                            {filtered.map(f=>(
+                              <div key={f.id} className="my-food-chip">
+                                <button className="my-food-fill" onClick={()=>fill(f)}>{f.name}</button>
+                                <button className="my-food-del" onClick={()=>onDeleteCustomFood(f.id)} title="Remove">×</button>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                    })()}
                   </div>
                 )}
 
                 {/* ── Manual form ── */}
                 <form className="modal-form" onSubmit={submit}>
                   <div className={`form-group full ${errors.name?'has-error':''}`}>
-                    <label>Food Name</label>
+                    <label>Food Name <span style={{color:'var(--text-3)',fontWeight:400}}>(optional)</span></label>
                     <input type="text" placeholder="e.g. Grilled chicken" value={form.name} onChange={e=>set('name',e.target.value)} autoFocus />
                     {errors.name && <span className="form-error">{errors.name}</span>}
                   </div>
@@ -1785,7 +2022,8 @@
                   )}
                   <div className="modal-footer">
                     <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-                    <button type="submit" className="btn-primary">Add Food</button>
+                    <button type="button" className="btn-secondary" onClick={submitNoSave}>Add Only</button>
+                    <button type="submit" className="btn-primary">Add &amp; Save</button>
                   </div>
                 </form>
               </>
@@ -1822,8 +2060,9 @@
       return (
         <div className="modal-backdrop" onClick={e => e.target===e.currentTarget && onClose()}>
           <div className="modal">
+            <div className="modal-drag-handle" />
             <div className="modal-header">
-              <div className="modal-title">🎯 Daily Goals</div>
+              <div className="modal-title"><Icon name="target" size={16} style={{marginRight:6}}/>Daily Goals</div>
               <button className="modal-close" onClick={onClose}>×</button>
             </div>
             <form className="modal-form" onSubmit={submit}>
@@ -1880,13 +2119,13 @@
         <header className="header">
           <div className="header-top">
             <div className="brand">
-              <span className="brand-icon">⚡</span>
+              <span className="brand-icon"><Icon name="zap" size={18} strokeWidth={1.5}/></span>
               <span className="brand-name">MacroTrack</span>
             </div>
             <div className="header-actions">
-              <button className="btn-data" onClick={onExport} title="Download a backup of all your data">⬇ Backup</button>
-              <button className="btn-data restore" onClick={onImport} title="Restore from a backup file">⬆ Restore</button>
-              <button className="btn-goals" onClick={onOpenGoals}>🎯 Set Goals</button>
+              <button className="btn-data" onClick={onExport} title="Download a backup of all your data"><Icon name="download" size={13} style={{marginRight:4}}/>Backup</button>
+              <button className="btn-data restore" onClick={onImport} title="Restore from a backup file"><Icon name="upload" size={13} style={{marginRight:4}}/>Restore</button>
+              <button className="btn-goals" onClick={onOpenGoals}><Icon name="target" size={13} style={{marginRight:4}}/>Goals</button>
             </div>
           </div>
           <div className="header-nav">
@@ -1926,6 +2165,17 @@
       const addFood = (meal, food) => {
         setData(prev => {
           const day = prev.entries[currentDate] || emptyDay();
+          const logEntry = { ...food, id: `${Date.now()}-${Math.random()}` };
+          delete logEntry._noSave;
+
+          if (food._noSave) {
+            // Add to log only — do not persist to My Foods
+            return {
+              ...prev,
+              entries: { ...prev.entries, [currentDate]: { ...day, [meal]: [...day[meal], logEntry] } },
+            };
+          }
+
           // Store per-serving reference in customFoods (not the scaled values)
           const ref = {
             name:          food.name,
@@ -1944,7 +2194,7 @@
             : [refWithId, ...existing];
           return {
             ...prev,
-            entries: { ...prev.entries, [currentDate]: { ...day, [meal]: [...day[meal], {...food, id:`${Date.now()}-${Math.random()}`}] } },
+            entries: { ...prev.entries, [currentDate]: { ...day, [meal]: [...day[meal], logEntry] } },
             customFoods: newCustomFoods,
           };
         });
