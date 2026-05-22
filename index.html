@@ -603,6 +603,154 @@
       .modal-footer .btn-secondary:nth-child(2),
       .modal-footer .btn-primary { flex: 1; }
     }
+
+    /* ── Voice FAB ──────────────────────────────────── */
+    .voice-fab {
+      position: fixed; bottom: 28px; right: 20px; z-index: 900;
+      width: 54px; height: 54px; border-radius: 50%;
+      background: var(--accent); color: #fff; border: none;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 18px rgba(30,114,200,0.35);
+      cursor: pointer; transition: transform 0.15s, box-shadow 0.15s;
+      font-family: inherit;
+    }
+    .voice-fab:hover { transform: scale(1.07); box-shadow: 0 6px 22px rgba(30,114,200,0.5); }
+    .voice-fab.listening {
+      background: var(--danger);
+      animation: fab-pulse 1.3s ease-out infinite;
+      box-shadow: 0 4px 18px rgba(192,48,48,0.4);
+    }
+    @keyframes fab-pulse {
+      0%   { box-shadow: 0 0 0 0 rgba(192,48,48,0.45); }
+      70%  { box-shadow: 0 0 0 16px rgba(192,48,48,0); }
+      100% { box-shadow: 0 0 0 0 rgba(192,48,48,0); }
+    }
+
+    /* ── Voice Modal ─────────────────────────────────── */
+    .voice-modal {
+      background: var(--surface);
+      border-radius: var(--r) var(--r) 0 0;
+      width: 100%; max-width: 480px;
+      box-shadow: 0 -4px 40px rgba(0,0,0,0.12);
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+    .voice-modal-handle { width: 36px; height: 4px; border-radius: 2px; background: var(--fill); margin: 10px auto 0; }
+    .voice-modal-header {
+      padding: 14px 20px 12px;
+      border-bottom: 0.5px solid var(--sep);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .voice-modal-title { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+    .voice-body { padding: 22px 20px 20px; }
+    .voice-orb {
+      width: 76px; height: 76px; border-radius: 50%;
+      background: var(--fill); margin: 0 auto 16px;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.3s;
+    }
+    .voice-orb.listening {
+      background: rgba(192,48,48,0.10);
+      animation: orb-breathe 1.4s ease-in-out infinite;
+    }
+    .voice-orb.matched  { background: rgba(31,158,90,0.12); }
+    @keyframes orb-breathe {
+      0%,100% { transform: scale(1); }
+      50%     { transform: scale(1.09); }
+    }
+    .voice-status    { text-align: center; font-size: 0.83rem; color: var(--text-2); margin-bottom: 6px; }
+    .voice-transcript {
+      text-align: center; font-size: 0.96rem; color: var(--text);
+      font-weight: 500; min-height: 26px; margin-bottom: 18px; line-height: 1.4;
+    }
+    .voice-match-card {
+      background: var(--surface2); border-radius: var(--r-sm);
+      border: 0.5px solid var(--border); padding: 13px 15px; margin-bottom: 14px;
+    }
+    .voice-match-name   { font-size: 0.95rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .voice-match-macros { font-size: 0.76rem; color: var(--text-2); }
+    .voice-match-badge  {
+      display: inline-block; font-size: 0.65rem; font-weight: 600;
+      color: var(--green); background: rgba(31,158,90,0.1);
+      border-radius: 99px; padding: 2px 8px; margin-bottom: 8px;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .voice-field         { margin-bottom: 12px; }
+    .voice-field label   { font-size: 0.74rem; font-weight: 500; color: var(--text-2); display: block; margin-bottom: 5px; }
+    .voice-field input,
+    .voice-field select  {
+      width: 100%; padding: 9px 12px; background: var(--fill);
+      border: 0.5px solid var(--border); border-radius: 10px;
+      color: var(--text); font-size: 0.9rem; font-family: inherit; outline: none;
+      box-sizing: border-box;
+    }
+    .voice-field input:focus,
+    .voice-field select:focus { background: var(--surface2); border-color: var(--accent); }
+    .voice-actions       { display: flex; gap: 10px; margin-top: 4px; }
+    .voice-actions > *   { flex: 1; }
+    .voice-hint {
+      text-align: center; font-size: 0.76rem; color: var(--text-3);
+      margin-bottom: 18px; line-height: 1.5;
+    }
+
+    /* ── Voice items list (review phase) ── */
+    .voice-items {
+      display: flex; flex-direction: column; gap: 8px;
+      max-height: 42vh; overflow-y: auto;
+      margin: 0 -4px 14px; padding: 0 4px;
+    }
+    .voice-item {
+      background: var(--surface2); border: 0.5px solid var(--border);
+      border-radius: var(--r-sm); padding: 10px 12px;
+    }
+    .voice-item.matched   { border-left: 3px solid var(--green); }
+    .voice-item.unmatched { border-left: 3px solid var(--text-3); background: var(--fill2); }
+    .voice-item-top {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 8px; margin-bottom: 4px;
+    }
+    .voice-item-name {
+      font-size: 0.92rem; font-weight: 600; color: var(--text);
+      display: flex; align-items: center; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .voice-item-x {
+      flex-shrink: 0; background: transparent; border: none;
+      color: var(--text-3); font-size: 1.1rem; cursor: pointer;
+      padding: 2px 6px; border-radius: 6px; line-height: 1;
+      font-family: inherit; transition: all 0.15s;
+    }
+    .voice-item-x:hover { color: var(--red); background: rgba(192,48,48,0.08); }
+    .voice-item-macros { font-size: 0.74rem; color: var(--text-2); margin-bottom: 8px; }
+    .voice-item-warn {
+      font-size: 0.72rem; color: var(--text-3); font-style: italic; margin-bottom: 8px;
+    }
+    .voice-item-controls { display: flex; gap: 8px; align-items: stretch; }
+    .voice-item-controls select {
+      flex: 1; min-width: 0; padding: 6px 10px;
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 8px; color: var(--text); font-size: 0.82rem;
+      font-family: inherit; outline: none;
+    }
+    .voice-item-controls select:focus { border-color: var(--accent); }
+    .voice-item-qty {
+      display: flex; align-items: center; gap: 4px;
+      background: var(--surface); border: 0.5px solid var(--border);
+      border-radius: 8px; padding: 0 10px 0 0; flex-shrink: 0;
+    }
+    .voice-item-qty input {
+      width: 60px; padding: 6px 4px 6px 10px; background: transparent;
+      border: none; color: var(--text); font-size: 0.82rem;
+      font-family: inherit; outline: none;
+    }
+    .voice-item-qty span { font-size: 0.72rem; color: var(--text-3); }
+    .voice-item-search {
+      flex-shrink: 0; padding: 6px 12px; background: var(--fill);
+      border: 0.5px solid var(--border); border-radius: 8px;
+      color: var(--accent); font-size: 0.78rem; font-weight: 500;
+      cursor: pointer; font-family: inherit; transition: all 0.15s;
+    }
+    .voice-item-search:hover { background: var(--surface3); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
   </style>
 </head>
 <body>
@@ -657,6 +805,9 @@
         refresh:  <><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></>,
         edit:     <><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>,
         star:     <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>,
+        mic:      <><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></>,
+        micoff:   <><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></>,
+        check:    <><polyline points="20 6 9 17 4 12"/></>,
       };
       return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
@@ -667,6 +818,135 @@
           {p[name]}
         </svg>
       );
+    }
+
+    // ── Voice helpers ──────────────────────────────────
+    const round1 = n => Math.round(n * 10) / 10;
+
+    function matchSavedFood(foodName, customFoods) {
+      if (!foodName || !customFoods?.length) return null;
+      const q = foodName.toLowerCase().trim();
+      if (!q) return null;
+
+      // 1. Exact
+      const exact = customFoods.find(f => f.name.toLowerCase() === q);
+      if (exact) return { food: exact, confidence: 'exact' };
+
+      // 2. One fully contains the other
+      const sub = customFoods.find(f =>
+        f.name.toLowerCase().includes(q) || q.includes(f.name.toLowerCase())
+      );
+      if (sub) return { food: sub, confidence: 'contains' };
+
+      // 3. Word-overlap score
+      const qWords = q.split(/\s+/).filter(w => w.length > 2);
+      if (!qWords.length) return null;
+      let bestFood = null, bestScore = 0;
+      for (const f of customFoods) {
+        const fWords = f.name.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+        const hits = qWords.filter(qw => fWords.some(fw => fw.includes(qw) || qw.includes(fw))).length;
+        const score = hits / Math.max(qWords.length, fWords.length, 1);
+        if (score > bestScore && score >= 0.4) { bestFood = f; bestScore = score; }
+      }
+      return bestFood ? { food: bestFood, confidence: 'fuzzy' } : null;
+    }
+
+    // Detect meal from a chunk of text
+    function detectMealInText(t) {
+      const mealMap = {
+        breakfast:'breakfast', lunch:'lunch', dinner:'dinner',
+        snack:'snack', snacks:'snack',
+        morning:'breakfast', tonight:'dinner', night:'dinner', evening:'dinner',
+      };
+      for (const [word, meal] of Object.entries(mealMap)) {
+        if (new RegExp(`\\b${word}\\b`).test(t)) return meal;
+      }
+      return null;
+    }
+
+    // Detect quantity + unit in a chunk
+    function detectQuantity(t) {
+      const qtyRe = /(\d+(?:\.\d+)?)\s*(grams?|g(?=\s|$)|oz|ounces?|servings?|srv|pieces?|cups?|tbsp|tablespoons?|tsp|teaspoons?|ml|lb|pounds?)/i;
+      const m = t.match(qtyRe);
+      if (!m) return { quantity: null, unit: null };
+      const u = m[2].toLowerCase();
+      return {
+        quantity: parseFloat(m[1]),
+        unit: u.startsWith('g') ? 'grams' : u.startsWith('o') ? 'oz' : 'servings',
+      };
+    }
+
+    // Strip everything that isn't a food word
+    function cleanFoodChunk(t, keepAnd = false) {
+      let ft = t.replace(/[.,!?;:'"]/g, ' ');
+      ft = ft.replace(/\b(hi|hey|hello|ok|okay|um|uh|er|so|well|yeah|yes|also|then)\b/g, ' ');
+      ft = ft.replace(/\bi\s+just\s+(had|ate|eaten)\b/g, ' ');
+      ft = ft.replace(/\bi\s+(had|ate|have|eaten)\b/g, ' ');
+      ft = ft.replace(/\bjust\s+(had|ate)\b/g, ' ');
+      ft = ft.replace(/\b(add|log|track|record|ate|had|eaten|have)\b/g, ' ');
+      ft = ft.replace(/\bfor\s+(breakfast|lunch|dinner|snack|snacks)\b/g, ' ');
+      ft = ft.replace(/\b(breakfast|lunch|dinner|snack|snacks|morning|tonight|night|evening)\b/g, ' ');
+      ft = ft.replace(/\d+(?:\.\d+)?\s*(grams?|g(?=\s|$)|oz|ounces?|servings?|srv|pieces?|cups?|tbsp|tablespoons?|tsp|teaspoons?|ml|lb|pounds?)/g, ' ');
+      // Stopwords — keep "and" if asked (we split on it later)
+      const stop = keepAnd
+        ? /\b(of|a|an|some|my|the|with|for|to|at|please|today)\b/g
+        : /\b(of|a|an|some|my|the|with|and|for|to|at|please|today)\b/g;
+      ft = ft.replace(stop, ' ');
+      return ft.replace(/\s+/g, ' ').trim();
+    }
+
+    // Split a multi-meal utterance into per-meal chunks
+    // Triggers: "and I also had", "and then I had", "and I had", "also had", "then I ate"
+    function splitMealChunks(text) {
+      const t = text.toLowerCase().replace(/[.,!?;:'"]/g, ' ').replace(/\s+/g, ' ').trim();
+      const splitRe = /\s+(?:and\s+)?(?:then\s+)?(?:i\s+)?(?:also\s+)?(?:i\s+)?(?:had|ate|have|got)\b/gi;
+      // Use split with capture to preserve delimiters? Simpler: replace separators with sentinel.
+      const SENT = '|||CHUNK|||';
+      // First chunk often starts with "i had" — keep it. We split on subsequent occurrences.
+      let firstReplaced = false;
+      const replaced = t.replace(splitRe, (m) => {
+        if (!firstReplaced) { firstReplaced = true; return m; } // keep first "had/ate"
+        return SENT;
+      });
+      return replaced.split(SENT).map(s => s.trim()).filter(Boolean);
+    }
+
+    // Split a food name on "and" / commas into multiple items,
+    // but try matching the whole thing first (so "salt and pepper" stays one)
+    function splitFoodItems(foodName, customFoods) {
+      const trimmed = foodName.trim();
+      if (!trimmed) return [];
+      // Whole-string match → keep as single item
+      if (matchSavedFood(trimmed, customFoods)) return [trimmed];
+      // Otherwise split on " and "
+      const parts = trimmed.split(/\s+and\s+/).map(p => p.trim()).filter(p => p.length > 1);
+      return parts.length ? parts : [trimmed];
+    }
+
+    // Top-level: parse an utterance into a list of {foodName, meal, quantity, unit, matched}
+    function parseVoiceCommandMulti(text, customFoods) {
+      const chunks = splitMealChunks(text);
+      const items = [];
+      for (const chunk of chunks) {
+        const meal = detectMealInText(chunk);
+        const { quantity, unit } = detectQuantity(chunk);
+        // Clean keeping "and" so we can split foods
+        const cleaned = cleanFoodChunk(chunk, true);
+        const foodNames = splitFoodItems(cleaned, customFoods);
+        for (const name of foodNames) {
+          if (!name) continue;
+          const matched = matchSavedFood(name, customFoods);
+          items.push({
+            id: `vi-${Date.now()}-${Math.random().toString(36).slice(2,8)}`,
+            foodName: name,
+            meal: meal || null,
+            quantity,
+            unit,
+            matched,
+          });
+        }
+      }
+      return items;
     }
 
     const sumMacros = (items) => items.reduce((a,f)=>({
@@ -1448,13 +1728,13 @@
         }));
     }
 
-    function AddFoodModal({ meal, onAdd, onClose, customFoods, onDeleteCustomFood }) {
+    function AddFoodModal({ meal, onAdd, onClose, customFoods, onDeleteCustomFood, initialSearch }) {
       const [form, setForm] = useState({
         name:'', servingUnit:'grams', servingAmount:'100', quantity:'100',
         calories:'', protein:'', carbs:'', fat:'',
       });
       const [errors, setErrors]     = useState({});
-      const [search, setSearch]     = useState('');
+      const [search, setSearch]     = useState(initialSearch || '');
       const [dbResults, setDbResults] = useState([]);
       const [dbStatus, setDbStatus]   = useState('idle'); // idle | loading | done | error
       const searchTimer = React.useRef(null);
@@ -2169,6 +2449,234 @@
       );
     }
 
+    // ── Voice Input Modal ──────────────────────────────
+    function VoiceInputModal({ customFoods, onAdd, onFallback, onClose, defaultMeal }) {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      const [phase, setPhase]         = React.useState(SR ? 'listening' : 'nosupport');
+      const [transcript, setTranscript] = React.useState('');
+      const [items, setItems]         = React.useState([]); // parsed items
+      const srRef    = React.useRef(null);
+      const retryRef = React.useRef(0);
+
+      const stopSR = () => { try { srRef.current?.stop(); } catch {} srRef.current = null; };
+
+      const startListening = React.useCallback(() => {
+        if (!SR) return;
+        stopSR();
+        // Small delay so previous SR instance fully cleans up
+        setTimeout(() => {
+          const sr = new SR();
+          srRef.current = sr;
+          sr.continuous     = false;
+          sr.interimResults = true;
+          sr.lang           = 'en-US';
+          let finalFired = false;
+          sr.onresult = (e) => {
+            const t = Array.from(e.results).map(r => r[0].transcript).join('');
+            setTranscript(t);
+            if (!finalFired && e.results[e.results.length - 1].isFinal) {
+              finalFired = true;
+              processText(t);
+            }
+          };
+          sr.onerror = (e) => {
+            if (finalFired) return;
+            if (e.error === 'aborted') return;
+            // Auto-retry once for transient mic-acquire failures
+            if (retryRef.current < 1 && (e.error === 'audio-capture' || e.error === 'network')) {
+              retryRef.current += 1;
+              setTimeout(() => { try { sr.start(); } catch { setPhase('error'); } }, 500);
+              return;
+            }
+            setPhase(e.error === 'no-speech' ? 'retry' : 'error');
+          };
+          sr.onend = () => {
+            if (!finalFired) setPhase(p => p === 'listening' ? 'retry' : p);
+          };
+          setPhase('listening');
+          setTranscript('');
+          setItems([]);
+          retryRef.current = 0;
+          try { sr.start(); } catch { setPhase('error'); }
+        }, 80);
+      }, []);
+
+      const processText = (text) => {
+        const parsed = parseVoiceCommandMulti(text, customFoods);
+        // Default any missing meals to time-of-day guess
+        const fallbackMeal = defaultMeal || 'lunch';
+        const withDefaults = parsed.map(it => ({
+          ...it,
+          meal: it.meal || fallbackMeal,
+          qty:  it.quantity ?? (it.matched ? it.matched.food.servingAmount : 100),
+        }));
+        setItems(withDefaults);
+        setPhase(withDefaults.length ? 'review' : 'nomatch');
+      };
+
+      React.useEffect(() => {
+        if (SR) startListening();
+        return stopSR;
+      }, []);
+
+      const updateItem = (id, patch) => {
+        setItems(prev => prev.map(it => it.id === id ? { ...it, ...patch } : it));
+      };
+      const removeItem = (id) => {
+        setItems(prev => prev.filter(it => it.id !== id));
+      };
+
+      const matchedItems = items.filter(it => it.matched);
+
+      const addAll = () => {
+        for (const it of matchedItems) {
+          const saved = it.matched.food;
+          const amount = Number(it.qty) || saved.servingAmount;
+          const scale  = amount / (saved.servingAmount || 1);
+          onAdd(it.meal, {
+            name:          saved.name,
+            servingUnit:   saved.servingUnit,
+            servingAmount: saved.servingAmount,
+            quantity:      amount,
+            caloriesPerServing: saved.calories,
+            proteinPerServing:  saved.protein,
+            carbsPerServing:    saved.carbs,
+            fatPerServing:      saved.fat,
+            calories: round1(saved.calories * scale),
+            protein:  round1(saved.protein  * scale),
+            carbs:    round1(saved.carbs    * scale),
+            fat:      round1(saved.fat      * scale),
+            _noSave:  true,
+          });
+        }
+        onClose();
+      };
+
+      const searchFor = (it) => {
+        onFallback({ meal: it.meal, search: it.foodName });
+      };
+
+      const unitOf = (food) => food?.servingUnit === 'grams' ? 'g'
+                             : food?.servingUnit === 'oz'    ? 'oz' : 'srv';
+
+      return (
+        <div className="modal-backdrop" onClick={e => e.target === e.currentTarget && onClose()}>
+          <div className="voice-modal">
+            <div className="voice-modal-handle"/>
+            <div className="voice-modal-header">
+              <span className="voice-modal-title">Voice Add Food</span>
+              <button className="modal-close" onClick={onClose}>×</button>
+            </div>
+            <div className="voice-body">
+
+              {phase === 'nosupport' && <>
+                <div className="voice-orb"><Icon name="micoff" size={26} style={{color:'var(--text-3)'}}/></div>
+                <div className="voice-status">Voice input not supported in this browser</div>
+                <div className="voice-hint">Use Chrome or Safari for voice input.</div>
+                <div className="voice-actions"><button className="btn-secondary" onClick={onClose}>Close</button></div>
+              </>}
+
+              {phase === 'listening' && <>
+                <div className="voice-orb listening"><Icon name="mic" size={26} style={{color:'var(--danger)'}}/></div>
+                <div className="voice-status">Listening…</div>
+                <div className="voice-transcript">
+                  {transcript || <span style={{color:'var(--text-3)',fontSize:'0.85rem'}}>Try: "I had beef and rice for dinner and a sandwich for lunch"</span>}
+                </div>
+                <div className="voice-actions"><button className="btn-secondary" onClick={onClose}>Cancel</button></div>
+              </>}
+
+              {phase === 'retry' && <>
+                <div className="voice-orb"><Icon name="mic" size={26} style={{color:'var(--text-3)'}}/></div>
+                <div className="voice-status">Nothing heard</div>
+                <div className="voice-hint">Tap "Try Again" and speak clearly near your microphone.</div>
+                <div className="voice-actions">
+                  <button className="btn-secondary" onClick={onClose}>Cancel</button>
+                  <button className="btn-primary" onClick={startListening}>Try Again</button>
+                </div>
+              </>}
+
+              {phase === 'error' && <>
+                <div className="voice-orb"><Icon name="micoff" size={26} style={{color:'var(--text-3)'}}/></div>
+                <div className="voice-status">Microphone unavailable</div>
+                <div className="voice-hint">Check that your browser has microphone permission, then try again.</div>
+                <div className="voice-actions">
+                  <button className="btn-secondary" onClick={onClose}>Close</button>
+                  <button className="btn-primary" onClick={startListening}>Retry</button>
+                </div>
+              </>}
+
+              {phase === 'nomatch' && <>
+                <div className="voice-orb"><Icon name="mic" size={26} style={{color:'var(--text-2)'}}/></div>
+                <div className="voice-status">Couldn't pick out any food names.</div>
+                <div className="voice-hint" style={{marginTop:6}}>Heard: <em>"{transcript}"</em></div>
+                <div className="voice-actions" style={{marginTop:14}}>
+                  <button className="btn-secondary" onClick={onClose}>Cancel</button>
+                  <button className="btn-primary" onClick={startListening}>Try Again</button>
+                </div>
+              </>}
+
+              {phase === 'review' && <>
+                <div className="voice-status" style={{marginBottom:4}}>Heard: <em style={{color:'var(--text-3)'}}>"{transcript}"</em></div>
+                <div className="voice-status" style={{marginBottom:12,fontWeight:600,color:'var(--text)'}}>
+                  Detected {items.length} item{items.length!==1?'s':''}
+                </div>
+                <div className="voice-items">
+                  {items.map(it => {
+                    const m = it.matched;
+                    const food = m?.food;
+                    const amt  = Number(it.qty) || (food?.servingAmount ?? 100);
+                    const scale = food ? amt / (food.servingAmount || 1) : 1;
+                    return (
+                      <div key={it.id} className={'voice-item ' + (m ? 'matched' : 'unmatched')}>
+                        <div className="voice-item-top">
+                          <div className="voice-item-name">
+                            {m
+                              ? <><Icon name="star" size={11} strokeWidth={2} style={{color:'var(--green)',marginRight:5}}/>{food.name}</>
+                              : <><Icon name="micoff" size={11} strokeWidth={2} style={{color:'var(--text-3)',marginRight:5}}/>{it.foodName}</>
+                            }
+                          </div>
+                          <button className="voice-item-x" onClick={() => removeItem(it.id)} title="Remove">×</button>
+                        </div>
+                        {m ? (
+                          <div className="voice-item-macros">
+                            {Math.round(food.calories * scale)} kcal · P {round1(food.protein*scale)}g · C {round1(food.carbs*scale)}g · F {round1(food.fat*scale)}g
+                          </div>
+                        ) : (
+                          <div className="voice-item-warn">Not in Saved Foods</div>
+                        )}
+                        <div className="voice-item-controls">
+                          <select value={it.meal} onChange={e => updateItem(it.id, {meal: e.target.value})}>
+                            {MEALS.map(mm => <option key={mm.key} value={mm.key}>{mm.label}</option>)}
+                          </select>
+                          {m ? (
+                            <div className="voice-item-qty">
+                              <input type="number" min="0.1" step="any" value={it.qty}
+                                onChange={e => updateItem(it.id, {qty: e.target.value})}/>
+                              <span>{unitOf(food)}</span>
+                            </div>
+                          ) : (
+                            <button className="voice-item-search" onClick={() => searchFor(it)}>Search…</button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="voice-actions">
+                  <button className="btn-secondary" onClick={startListening}>Retry</button>
+                  <button className="btn-primary" onClick={addAll} disabled={matchedItems.length === 0}>
+                    {matchedItems.length > 0
+                      ? 'Add ' + matchedItems.length + ' item' + (matchedItems.length !== 1 ? 's' : '')
+                      : 'Nothing to add'}
+                  </button>
+                </div>
+              </>}
+
+            </div>
+          </div>
+        </div>
+      );
+    }
     // ── App ────────────────────────────────────────────
     function App() {
       const [data, setData] = useState(() => { const d = loadData(); return d || { goals: DEFAULT_GOALS, entries: {}, customFoods: [], weights: {}, weightUnit: 'lbs', burned: {} }; });
@@ -2176,6 +2684,8 @@
       const [view, setView] = useState('day');
       const [addModal, setAddModal] = useState(null);
       const [goalsOpen, setGoalsOpen] = useState(false);
+      const [voiceOpen, setVoiceOpen] = useState(false);
+      const guessMeal = () => { const h=new Date().getHours(); return h<10?'breakfast':h<14?'lunch':h<20?'dinner':'snack'; };
 
       useEffect(() => { saveData(data); }, [data]);
 
@@ -2315,8 +2825,28 @@
               : <WeekView weekDates={weekDates} getDayTotals={getDayTotals} weekTotals={weekTotals} goals={data.goals} currentDate={currentDate} onSelectDate={d=>{setCurrentDate(d);setView('day');}} weights={data.weights||{}} weightUnit={data.weightUnit||'lbs'} onUpdateWeight={updateWeight} onUpdateWeightUnit={updateWeightUnit} getDayBurned={getDayBurned} weekBurnedBonus={weekBurnedBonus} />
             }
           </main>
-          {addModal && <AddFoodModal meal={addModal.meal} onAdd={food=>addFood(addModal.meal,food)} onClose={()=>setAddModal(null)} customFoods={data.customFoods || []} onDeleteCustomFood={deleteCustomFood} />}
+          {/* Floating mic button */}
+          {!addModal && !goalsOpen && !voiceOpen && (
+            <button
+              className={`voice-fab${voiceOpen?' listening':''}`}
+              onClick={() => setVoiceOpen(true)}
+              title="Voice add food"
+            >
+              <Icon name="mic" size={22} strokeWidth={2} style={{color:'#fff'}}/>
+            </button>
+          )}
+
+          {addModal && <AddFoodModal meal={addModal.meal} onAdd={food=>addFood(addModal.meal,food)} onClose={()=>setAddModal(null)} customFoods={data.customFoods || []} onDeleteCustomFood={deleteCustomFood} initialSearch={addModal.initialSearch||''} />}
           {goalsOpen && <GoalsModal goals={data.goals} onSave={g=>{setData(p=>({...p,goals:g}));setGoalsOpen(false);}} onClose={()=>setGoalsOpen(false)} />}
+          {voiceOpen && (
+            <VoiceInputModal
+              customFoods={data.customFoods || []}
+              defaultMeal={guessMeal()}
+              onAdd={(meal, food) => { addFood(meal, food); setVoiceOpen(false); }}
+              onFallback={({ meal, search }) => { setVoiceOpen(false); setAddModal({ meal, initialSearch: search }); }}
+              onClose={() => setVoiceOpen(false)}
+            />
+          )}
           {toast && <div className={`import-toast ${toast.error ? 'error' : ''}`}>{toast.msg}</div>}
         </div>
       );
