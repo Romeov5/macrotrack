@@ -2612,13 +2612,18 @@
               </ol>
 
               <div className="health-note">
-                <b>How syncing behaves:</b> each tap only sends what's <i>new</i> since the last sync that day,
-                so tapping again won't double-count. Samples log at the current time, so sync on the day you
-                eat. Removing a food after syncing won't pull it back out of Health — if a day gets out of
-                step, use the button below to re-send the full day.
+                <b>Why Sync only sends what's new:</b> Apple's Shortcuts can only <i>add</i> to Health — there's
+                no way for them to overwrite or delete. So each tap adds just the amount logged since your last
+                sync, which keeps Health's running total equal to your day's total (e.g. 1,746 kcal, then +1&nbsp;g
+                protein later = the full day). The number Health shows is always your whole day, not just the
+                last bit. Samples log at the current time, so sync on the day you eat.
+                <br/><br/>
+                <b>If a day ends up wrong</b> (you removed a food after syncing), Health can't subtract it. To redo
+                a day: open <b>Health → Browse → Nutrition</b>, delete that day's entries, then use the button below
+                to log the whole day again.
               </div>
 
-              <button className="health-resync" onClick={onResync}>Re-sync the entire day from scratch</button>
+              <button className="health-resync" onClick={onResync}>Redo this day &nbsp;·&nbsp; clear it in Health first</button>
 
               <div className="modal-footer">
                 <button type="button" className="btn-primary" onClick={onClose}>Done</button>
@@ -3130,7 +3135,7 @@
           )}
           {addModal && <AddFoodModal meal={addModal.meal} onAdd={food=>addFood(addModal.meal,food)} onClose={()=>setAddModal(null)} customFoods={data.customFoods || []} onDeleteCustomFood={deleteCustomFood} initialSearch={addModal.initialSearch||''} />}
           {goalsOpen && <GoalsModal goals={data.goals} onSave={g=>{setData(p=>({...p,goals:g}));setGoalsOpen(false);}} onClose={()=>setGoalsOpen(false)} />}
-          {healthOpen && <HealthSetupModal shortcutName={HEALTH_SHORTCUT} onResync={()=>{ setHealthOpen(false); syncToHealth(true); }} onClose={()=>setHealthOpen(false)} />}
+          {healthOpen && <HealthSetupModal shortcutName={HEALTH_SHORTCUT} onResync={()=>{ if (window.confirm("Apple won't let a Shortcut erase Health data.\n\nFirst delete this day's MacroTrack nutrition entries in the Health app (Browse → Nutrition), THEN tap OK to log the whole day again.\n\nTapping OK without clearing Health first will double-count the day.")) { setHealthOpen(false); syncToHealth(true); } }} onClose={()=>setHealthOpen(false)} />}
           {toast && <div className={`import-toast ${toast.error ? 'error' : ''}`}>{toast.msg}</div>}
         </div>
       );
